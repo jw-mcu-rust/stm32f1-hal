@@ -16,6 +16,15 @@
     stm32f103 = ["stm32f1/stm32f103"]
     stm32f105 = ["stm32f1/stm32f107", "connectivity"]
     stm32f107 = ["stm32f1/stm32f107", "connectivity"]
+    x4 = []
+    x6 = []
+    x8 = ["medium"]
+    xB = ["medium"]
+    xC = ["high"]
+    xD = ["high"]
+    xE = ["high"]
+    xF = ["xl"]
+    xG = ["xl"]
     # Devices with 64 or 128 Kb ROM
     medium = []
     # Devices with 256 or 512 Kb ROM
@@ -49,6 +58,5 @@
     lto = true
     opt-level = "s"
 
-[[example]]
-    name = "blinky"
-    required-features = ["critical-section-single-core"]
+[workspace]
+    exclude = ["examples"]

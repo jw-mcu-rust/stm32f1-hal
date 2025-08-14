@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Microcontroller",
+            "type": "cortex-debug",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "servertype": "jlink",
+            "interface": "swd",
+            "runToEntryPoint": "main",
+            "svdFile": "STM32F103.svd",
+            "preLaunchTask": "build",
+            "device": "STM32F103C8",
+            "executable": "${workspaceFolder}/target/thumbv7m-none-eabi/release/f103c8"
+        }
+    ]
+}

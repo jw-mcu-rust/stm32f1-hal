@@ -1,4 +1,5 @@
 import argparse
+import os
 import subprocess
 
 
@@ -11,18 +12,26 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--mcu", choices=["100", "101", "103", "105", "107"], default="103")
     parser.add_argument("--release", action="store_true")
-    opt = parser.parse_args()
+    parser.add_argument("-e", "--examples", type=str, nargs="*")
+    opts = parser.parse_args()
 
     cmd = ["cargo"]
-    if opt.release:
-        cmd.append("build")
-        cmd.append("--release")
-    else:
-        cmd.append("check")
 
-    cmd.append(f"--features=stm32f{opt.mcu},critical-section-single-core")
-    cmd.append("--example=blinky")
-    run_cmd(cmd)
+    if opts.examples:
+        for e in opts.examples:
+            os.chdir("examples/" + e)
+            cmd.extend(["build", "--release"])
+            run_cmd(cmd)
+            os.chdir("../../")
+    else:
+        if opts.release:
+            cmd.extend(["build", "--release"])
+        else:
+            cmd.append("check")
+
+        cmd.append(f"--features=stm32f{opts.mcu}")
+        run_cmd(cmd)
+
     return 0
 
 

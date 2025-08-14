@@ -26,6 +26,17 @@
                 "--release"
             ],
             "group": "build",
+        },
+        {
+            "label": "build_f103c8",
+            "type": "process",
+            "command": "python",
+            "args": [
+                "scripts/build.py",
+                "-e",
+                "f103c8"
+            ],
+            "group": "build",
         }
     ]
 }

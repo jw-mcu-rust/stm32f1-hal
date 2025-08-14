@@ -484,7 +484,7 @@ impl BusTimerClock for APB2 {
 }
 
 /// Bus associated to peripheral
-pub trait RccBus: crate::sealed::Sealed {
+pub trait RccBus {
     /// Bus type;
     type Bus;
 }

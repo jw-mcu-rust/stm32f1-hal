@@ -1,0 +1,54 @@
+[package]
+    authors = ["Jalon Wong <jalonwong@gmail.com>"]
+    categories = ["embedded", "hardware-support", "no-std"]
+    description = "HAL for the STM32F1 family"
+    edition = "2024"
+    keywords = ["arm", "cortex-m", "stm32", "hal"]
+    license = "MIT OR Apache-2.0"
+    name = "jw-stm32f1-hal"
+    readme = "README.md"
+    version = "0.1.0"
+
+[features]
+    critical-section-single-core = ["cortex-m/critical-section-single-core"]
+    stm32f100 = ["stm32f1/stm32f100"]
+    stm32f101 = ["stm32f1/stm32f101"]
+    stm32f103 = ["stm32f1/stm32f103"]
+    stm32f105 = ["stm32f1/stm32f107", "connectivity"]
+    stm32f107 = ["stm32f1/stm32f107", "connectivity"]
+    # Devices with 64 or 128 Kb ROM
+    medium = []
+    # Devices with 256 or 512 Kb ROM
+    high = ["medium", "has-dac"]
+    # Devices with 768 Kb ROM or more
+    xl = ["high"]
+    # Connectivity line devices (`stm32f105xx` and `stm32f107xx`)
+    connectivity = ["medium", "has-can", "has-dac"]
+    # Devices with CAN interface
+    has-can = []
+    # Devices with Dac
+    has-dac = []
+
+[dependencies]
+    cortex-m = "0.7"
+    cortex-m-rt = "0.7"
+    critical-section = "1.2"
+    embedded-hal = "1.0"
+    embedded-io = "0.6"
+    fugit = "0.3"
+    stm32f1 = { version = "0.16", features = ["atomics"] }
+
+[profile.dev]
+    codegen-units = 1
+    debug = true
+    opt-level = 0
+
+[profile.release]
+    codegen-units = 1
+    debug = true
+    lto = true
+    opt-level = "s"
+
+[[example]]
+    name = "blinky"
+    required-features = ["critical-section-single-core"]

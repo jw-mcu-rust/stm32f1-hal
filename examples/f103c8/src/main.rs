@@ -1,5 +1,8 @@
 #![no_std]
 #![no_main]
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(unused_mut)]
 
 use core::panic::PanicInfo;
 use cortex_m::asm;
@@ -20,14 +23,21 @@ fn main() -> ! {
     let mut gpioa = dp.GPIOA.split(&mut rcc);
     let mut gpiob = dp.GPIOB.split(&mut rcc);
 
-    let mut mcu = Mcu { rcc };
+    let afio = dp.AFIO;
+    let mut mcu = Mcu { rcc, afio };
 
     // UART ---------------------------------------
 
     let config = uart::Config::default();
     let pin_tx = gpioa.pa9.into_alternate_push_pull(&mut gpioa.crh);
     let pin_rx = gpioa.pa10;
-    let (uart_tx, uart_rx) = dp.USART1.init_tx_rx(config, &mut mcu);
+    let (Some(uart_tx), Some(uart_rx)) = dp
+        .USART1
+        .init(config, &mut mcu)
+        .into_tx_rx((Some(pin_tx), Some(pin_rx)))
+    else {
+        panic!()
+    };
     let mut uart_task = UartPollTask::new(uart_tx.into_poll(), uart_rx.into_poll());
 
     // LED ----------------------------------------

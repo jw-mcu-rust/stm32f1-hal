@@ -1,4 +1,5 @@
 /target
 /*.lock
-/.mypy_cache
+.mypy_cache
+__pycache__
 /.vscode/launch.json

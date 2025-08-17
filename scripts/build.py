@@ -2,9 +2,11 @@ import argparse
 import os
 import subprocess
 
+from base import green
+
 
 def run_cmd(cmd: list[str]) -> None:
-    print(f"\033[1;32mRunning\033[0m: {' '.join(cmd)}", flush=True)
+    print(f"{green("Running")}: {' '.join(cmd)}", flush=True)
     subprocess.run(cmd, text=True, check=True)
 
 
@@ -29,7 +31,7 @@ def main() -> int:
         else:
             cmd.append("check")
 
-        cmd.append(f"--features=stm32f{opts.mcu}")
+        cmd.append(f"--features=stm32f{opts.mcu},xG")
         run_cmd(cmd)
 
     return 0

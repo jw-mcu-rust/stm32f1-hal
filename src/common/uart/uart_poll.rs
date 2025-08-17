@@ -20,7 +20,7 @@ impl<U: UartReg> ErrorType for UartPollTx<U> {
 impl<U: UartReg> Write for UartPollTx<U> {
     fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
         for (i, &b) in buf.iter().enumerate() {
-            match self.uart.write(b) {
+            match self.uart.write(b as u16) {
                 Ok(()) => {}
                 Err(nb::Error::WouldBlock) => {
                     return Ok(i);
@@ -62,7 +62,7 @@ impl<U: UartReg> Read for UartPollRx<U> {
         for i in 0..buf.len() {
             match self.uart.read() {
                 Ok(byte) => {
-                    buf[i] = byte;
+                    buf[i] = byte as u8;
                 }
                 Err(nb::Error::WouldBlock) => return Ok(i),
                 Err(nb::Error::Other(e)) => return Err(e),

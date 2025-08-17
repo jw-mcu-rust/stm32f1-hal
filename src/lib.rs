@@ -24,7 +24,7 @@ pub use stm32f1::stm32f103 as pac;
 #[cfg(any(feature = "stm32f105", feature = "stm32f107"))]
 pub use stm32f1::stm32f107 as pac;
 
-pub(crate) trait Steal {
+pub trait Steal {
     /// Steal an instance of this peripheral
     ///
     /// # Safety

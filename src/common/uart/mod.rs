@@ -103,11 +103,11 @@ pub trait UartReg {
     fn set_dma_rx(&mut self, enable: bool);
 
     fn get_tx_data_reg_addr(&self) -> u32;
-    fn write(&mut self, word: u8) -> nb::Result<(), Infallible>;
+    fn write(&mut self, word: u16) -> nb::Result<(), Infallible>;
     fn is_tx_empty(&self) -> bool;
 
     fn get_rx_data_reg_addr(&self) -> u32;
-    fn read(&mut self) -> nb::Result<u8, Error>;
+    fn read(&mut self) -> nb::Result<u16, Error>;
     fn is_rx_not_empty(&self) -> bool;
 
     fn set_interrupt(&mut self, event: UartEvent, enable: bool);

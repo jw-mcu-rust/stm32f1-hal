@@ -20,24 +20,24 @@ macro_rules! impl_wrap_func {
 }
 pub(crate) use impl_wrap_func;
 
-macro_rules! impl_wrap_deref_func {
+macro_rules! impl_wrap_func_deref {
     (fn $func:ident(&$($life:lifetime)? self $(, $arg:ident: $arg_ty:ty)*) $(-> $ret:ty)?; $($rest_func:tt)*) => {
         #[inline(always)]
         fn $func(&$($life)? self $(, $arg: $arg_ty),*) $(-> $ret)? {
             self.deref().$func($($arg),*)
         }
-        impl_wrap_deref_func!($($rest_func)*);
+        impl_wrap_func_deref!($($rest_func)*);
     };
     (fn $func:ident(&$($life:lifetime)? mut self $(, $arg:ident: $arg_ty:ty)*) $(-> $ret:ty)?; $($rest_func:tt)*) => {
         #[inline(always)]
         fn $func(&$($life)? mut self $(, $arg: $arg_ty),*) $(-> $ret)? {
             self.deref().$func($($arg),*)
         }
-        impl_wrap_deref_func!($($rest_func)*);
+        impl_wrap_func_deref!($($rest_func)*);
     };
     () => {};
 }
-pub(crate) use impl_wrap_deref_func;
+pub(crate) use impl_wrap_func_deref;
 
 macro_rules! impl_wrap_trait {
     (
@@ -53,7 +53,7 @@ macro_rules! impl_wrap_trait {
 }
 pub(crate) use impl_wrap_trait;
 
-macro_rules! impl_wrap_deref_trait {
+macro_rules! impl_wrap_trait_deref {
     (
         $vis:vis trait $trait_name:ident {
             $($func:tt)*
@@ -61,11 +61,11 @@ macro_rules! impl_wrap_deref_trait {
         $type:ty
     ) => {
         impl $trait_name for $type {
-            impl_wrap_deref_func!($($func)*);
+            impl_wrap_func_deref!($($func)*);
         }
     };
 }
-pub(crate) use impl_wrap_deref_trait;
+pub(crate) use impl_wrap_trait_deref;
 
 macro_rules! wrap_trait {
     (
@@ -83,13 +83,13 @@ macro_rules! wrap_trait {
 }
 pub(crate) use wrap_trait;
 
-macro_rules! wrap_deref_trait {
+macro_rules! wrap_trait_deref {
     (
         ($type:ty, $($rest_type:ty,)*),
         $($trait_body:tt)+
     ) => {
-        wrap_deref_trait!(($($rest_type,)*), $($trait_body)+);
-        impl_wrap_deref_trait!($($trait_body)+ $type);
+        wrap_trait_deref!(($($rest_type,)*), $($trait_body)+);
+        impl_wrap_trait_deref!($($trait_body)+ $type);
     };
 
     ((), $($trait_body:tt)+) => {
@@ -97,4 +97,4 @@ macro_rules! wrap_deref_trait {
         $($trait_body)+
     };
 }
-pub(crate) use wrap_deref_trait;
+pub(crate) use wrap_trait_deref;

@@ -4,6 +4,11 @@
     "rust-analyzer.cargo.target": "thumbv7m-none-eabi",
     "rust-analyzer.cargo.features": [
         "critical-section-single-core",
-        "stm32f103"
+        "stm32f103",
+        "xG",
     ],
+    "files.exclude": {
+        "**/.mypy_cache": true,
+        "**/__pycache__": true,
+    }
 }

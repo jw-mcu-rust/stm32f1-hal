@@ -14,7 +14,7 @@ pub use crate::timer::SysTimerExt as _stm32f4xx_hal_timer_SysCounterExt;
 pub use crate::timer::TimerExt as _stm32f4xx_hal_timer_TimerExt;
 // pub use crate::timer::pwm_input::PwmInputExt as _;
 // pub use crate::timer::pwm_input::QeiExt as _;
-pub use crate::pac_ext_stf1::uart::UartInit as _stm32_hal_uart_UartInit;
+pub use crate::uart::UartInit as _stm32_hal_uart_UartInit;
 pub use cortex_m;
 pub use cortex_m_rt;
 pub use fugit::ExtU32 as _fugit_ExtU32;

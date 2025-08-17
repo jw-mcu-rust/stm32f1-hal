@@ -1,250 +1,272 @@
-pub mod uart_poll;
+use super::Mcu;
+use crate::{
+    Steal, pac,
+    rcc::{BusClock, Clocks, Enable, Rcc, Reset},
+    common::uart::*,
+};
+use core::sync::atomic::{Ordering, compiler_fence};
 
-pub use core::convert::Infallible;
-pub use uart_poll::*;
-
-use embedded_io::ErrorKind;
-// pub mod uart_dma_tx;
-// pub use uart_dma_tx::*;
-// pub mod uart_dma_ringbuf_rx;
-// pub use uart_dma_ringbuf_rx::*;
-// pub mod uart_dma_ringbuf_tx;
-// pub use uart_dma_ringbuf_tx::*;
-
-/// Transmitter
-pub struct Tx<U: UartReg> {
-    uart: U,
+trait UartConfig: UartConfigStopBits + Steal {
+    fn config(&mut self, config: Config, clocks: &Clocks);
+    fn enable_clock(&mut self, rcc: &mut Rcc);
+    fn enable_comm(&mut self, tx: bool, rx: bool);
 }
 
-impl<U: UartReg> Tx<U> {
-    pub(crate) fn new(uart: U) -> Self {
-        Self { uart }
-    }
-
-    // pub fn get_interrupt_handler(&self) -> UartInterrupt<U> {
-    //     UartInterrupt::new(unsafe { self.uart.steal_mut() })
-    // }
-
-    pub fn into_poll(self) -> UartPollTx<U> {
-        UartPollTx::<U>::new(self.uart)
-    }
-
-    // pub fn into_dma<CH>(self, dma_ch: CH) -> UartDmaTx<U, CH>
-    // where
-    //     CH: BindDmaTx<U>,
-    // {
-    //     UartDmaTx::<U, CH>::new(self.uart, dma_ch)
-    // }
-
-    // pub fn into_dma_ringbuf<CH>(self, dma_ch: CH, buf_size: usize) -> UartDmaBufTx<U, CH>
-    // where
-    //     CH: BindDmaTx<U>,
-    // {
-    //     UartDmaBufTx::<U, CH>::new(self.uart, dma_ch, buf_size)
-    // }
+trait UartConfigStopBits {
+    fn set_stop_bits(&mut self, bits: StopBits);
 }
 
-// ------------------------------------------------------------------------------------------------
+macro_rules! st_uart {
+    ($(
+        $UARTx:ty,
+    )+) => {$(
+        impl UartReg for $UARTx {
+            #[inline]
+            fn set_dma_tx(&mut self, enable: bool) {
+                self.cr3().modify(|_, w| w.dmat().bit(enable));
+            }
 
-/// Receiver
-pub struct Rx<U: UartReg> {
-    uart: U,
-}
+            #[inline]
+            fn set_dma_rx(&mut self, enable: bool) {
+                self.cr3().modify(|_, w| w.dmar().bit(enable));
+            }
 
-impl<U: UartReg> Rx<U> {
-    pub(crate) fn new(uart: U) -> Self {
-        Self { uart }
-    }
+            #[inline]
+            fn is_tx_empty(&self) -> bool {
+                self.sr().read().txe().bit_is_set()
+            }
 
-    pub fn into_poll(self) -> UartPollRx<U> {
-        UartPollRx::<U>::new(self.uart)
-    }
+            fn write(&mut self, word: u8) -> nb::Result<(), Infallible> {
+                if self.is_tx_empty() {
+                    self.dr().write(|w| unsafe{
+                        w.dr().bits(word.into())
+                    });
+                    Ok(())
+                } else {
+                    Err(nb::Error::WouldBlock)
+                }
+            }
 
-    // pub fn into_dma_circle<CH>(self, dma_ch: CH, buf_size: usize) -> UartDmaBufRx<U, CH>
-    // where
-    //     CH: BindDmaRx<U>,
-    // {
-    //     UartDmaBufRx::<U, CH>::new(self.uart, dma_ch, buf_size)
-    // }
-}
+            fn read(&mut self) -> nb::Result<u8, Error> {
+                let sr = self.sr().read();
 
-// ------------------------------------------------------------------------------------------------
+                // Check for any errors
+                let err = if sr.pe().bit_is_set() {
+                    Some(Error::Parity)
+                } else if sr.fe().bit_is_set() {
+                    Some(Error::FrameFormat)
+                } else if sr.ne().bit_is_set() {
+                    Some(Error::Noise)
+                } else if sr.ore().bit_is_set() {
+                    Some(Error::Overrun)
+                } else {
+                    None
+                };
 
-/// UART interrupt handler
-pub struct UartInterrupt<U: UartReg> {
-    uart: U,
-}
+                if let Some(err) = err {
+                    self.clear_pe_flag();
+                    Err(nb::Error::Other(err))
+                } else {
+                    // Check if a byte is available
+                    if sr.rxne().bit_is_set() {
+                        // Read the received byte
+                        Ok(self.dr().read().dr().bits() as u8)
+                    } else {
+                        Err(nb::Error::WouldBlock)
+                    }
+                }
+            }
 
-impl<U: UartReg> UartInterrupt<U> {
-    // pub(crate) fn new(uart: &'static mut U) -> Self {
-    //     Self { uart }
-    // }
+            #[inline]
+            fn get_tx_data_reg_addr(&self) -> u32 {
+                &self.dr() as *const _ as u32
+            }
 
-    #[inline]
-    pub fn is_interrupted(&mut self, event: UartEvent) -> bool {
-        self.uart.is_interrupted(event)
-    }
+            #[inline]
+            fn get_rx_data_reg_addr(&self) -> u32 {
+                &self.dr() as *const _ as u32
+            }
 
-    #[inline]
-    pub fn listen(&mut self, event: UartEvent) {
-        self.uart.set_interrupt(event, true);
-    }
+            #[inline]
+            fn set_interrupt(&mut self, event: UartEvent, enable: bool) {
+                match event {
+                    UartEvent::Idle => {
+                        self.cr1().modify(|_, w| w.idleie().bit(enable));
+                    },
+                    _ => (),
+                }
+            }
 
-    #[inline]
-    pub fn unlisten(&mut self, event: UartEvent) {
-        self.uart.set_interrupt(event, false);
-    }
-}
+            fn is_interrupted(&mut self, event: UartEvent) -> bool {
+                match event {
+                    UartEvent::Idle => {
+                        if self.sr().read().idle().bit_is_set() {
+                            self.clear_pe_flag();
+                            true
+                        } else {
+                            false
+                        }
+                    },
+                    _ => false,
+                }
+            }
 
-// ----------------------------------------------------------------------------
+            /// In order to clear that error flag, you have to do a read from the sr register
+            /// followed by a read from the dr register.
+            #[inline]
+            fn clear_pe_flag(&self) {
+                let _ = self.sr().read();
+                compiler_fence(Ordering::Acquire);
+                let _ = self.dr().read();
+                compiler_fence(Ordering::Acquire);
+            }
 
-pub trait UartReg {
-    fn set_dma_tx(&mut self, enable: bool);
-    fn set_dma_rx(&mut self, enable: bool);
-
-    fn get_tx_data_reg_addr(&self) -> u32;
-    fn write(&mut self, word: u8) -> nb::Result<(), Infallible>;
-    fn is_tx_empty(&self) -> bool;
-
-    fn get_rx_data_reg_addr(&self) -> u32;
-    fn read(&mut self) -> nb::Result<u8, Error>;
-    fn is_rx_not_empty(&self) -> bool;
-
-    fn set_interrupt(&mut self, event: UartEvent, enable: bool);
-    fn is_interrupted(&mut self, event: UartEvent) -> bool;
-
-    fn clear_pe_flag(&self);
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum UartEvent {
-    /// New data can be sent
-    TxEmpty,
-    /// New data has been received
-    RxNotEmpty,
-    /// Idle line state detected
-    Idle,
-}
-
-/// UART error
-#[derive(Debug)]
-#[non_exhaustive]
-pub enum Error {
-    /// The peripheral receive buffer was overrun.
-    Overrun,
-    /// Received data does not conform to the peripheral configuration.
-    /// Can be caused by a misconfigured device on either end of the serial line.
-    FrameFormat,
-    /// Parity check failed.
-    Parity,
-    /// UART line is too noisy to read valid data.
-    Noise,
-    /// UART is busy and cannot accept new data.
-    Busy,
-    /// A different error occurred. The original error may contain more information.
-    Other,
-}
-
-impl embedded_io::Error for Error {
-    fn kind(&self) -> ErrorKind {
-        match self {
-            Error::Overrun => ErrorKind::InvalidData,
-            Error::FrameFormat => ErrorKind::InvalidData,
-            Error::Parity => ErrorKind::InvalidData,
-            Error::Noise => ErrorKind::InvalidData,
-            Error::Busy => ErrorKind::Interrupted,
-            Error::Other => ErrorKind::Other,
+            #[inline]
+            fn is_rx_not_empty(&self) -> bool {
+                self.sr().read().rxne().bit_is_set()
+            }
         }
-    }
-}
 
-pub enum WordLength {
-    /// When parity is enabled, a word has 7 data bits + 1 parity bit,
-    /// otherwise 8 data bits.
-    Bits8,
-    /// When parity is enabled, a word has 8 data bits + 1 parity bit,
-    /// otherwise 9 data bits.
-    Bits9,
-}
+        impl UartConfig for $UARTx {
+            fn config(&mut self, config: Config, clocks: &Clocks) {
+                // Configure baud rate
+                let brr = <$UARTx>::clock(clocks).raw() / config.baudrate;
+                assert!(brr >= 16, "impossible baud rate");
+                self.brr().write(|w| unsafe { w.bits(brr as u16) });
 
-pub enum Parity {
-    ParityNone,
-    ParityEven,
-    ParityOdd,
-}
+                // Configure word
+                self.cr1().modify(|_r, w| {
+                    w.m().bit(match config.word_length {
+                        WordLength::Bits8 => false,
+                        WordLength::Bits9 => true,
+                    });
+                    use pac::usart1::cr1::PS;
+                    w.ps().variant(match config.parity {
+                        Parity::ParityOdd => PS::Odd,
+                        _ => PS::Even,
+                    });
+                    w.pce().bit(!matches!(config.parity, Parity::ParityNone));
+                    w
+                });
 
-pub enum StopBits {
-    /// 1 stop bit
-    STOP1,
-    /// 0.5 stop bits
-    STOP0P5,
-    /// 2 stop bits
-    STOP2,
-    /// 1.5 stop bits
-    STOP1P5,
-}
+                // Configure stop bits
+                self.set_stop_bits(config.stop_bits);
+            }
 
-pub struct Config {
-    pub baudrate: u32,
-    pub word_length: WordLength,
-    pub parity: Parity,
-    pub stop_bits: StopBits,
-}
+            fn enable_clock(&mut self, rcc: &mut Rcc) {
+                <$UARTx>::enable(rcc);
+                <$UARTx>::reset(rcc);
+            }
 
-impl Default for Config {
-    fn default() -> Config {
-        Config {
-            baudrate: 115_200,
-            word_length: WordLength::Bits8,
-            parity: Parity::ParityNone,
-            stop_bits: StopBits::STOP1,
+            fn enable_comm(&mut self, tx: bool, rx: bool) {
+                // UE: enable USART
+                // TE: enable transceiver
+                // RE: enable receiver
+                self.cr1().modify(|_r, w| {
+                    w.ue().set_bit();
+                    w.te().bit(tx);
+                    w.re().bit(rx);
+                    w
+                });
+            }
         }
-    }
+    )+};
 }
 
-impl Config {
-    pub fn baudrate(mut self, baudrate: u32) -> Self {
-        self.baudrate = baudrate;
-        self
+macro_rules! st_usart_config_stop_bits {
+    ($(
+        $USARTx:ty,
+    )+) => {$(
+        impl UartConfigStopBits for $USARTx {
+            fn set_stop_bits(&mut self, bits: StopBits) {
+                use pac::usart1::cr2::STOP;
+
+                self.cr2().write(|w| {
+                    w.stop().variant(match bits {
+                        StopBits::STOP0P5 => STOP::Stop0p5,
+                        StopBits::STOP1 => STOP::Stop1,
+                        StopBits::STOP1P5 => STOP::Stop1p5,
+                        StopBits::STOP2 => STOP::Stop2,
+                    })
+                });
+            }
+        }
+
+        st_uart! {
+            $USARTx,
+        }
+    )+};
+}
+
+#[cfg(any(all(feature = "stm32f103", feature = "high"), feature = "connectivity"))]
+macro_rules! st_uart_config_stop_bits {
+    ($(
+        $UARTx:ty,
+    )+) => {$(
+        impl UartConfigStopBits for $UARTx {
+            fn set_stop_bits(&mut self, bits: StopBits) {
+                use pac::uart4::cr2::STOP;
+
+                // StopBits::STOP0P5 and StopBits::STOP1P5 aren't supported when using UART
+                // STOP_A::STOP1 and STOP_A::STOP2 will be used, respectively
+                self.cr2().write(|w| {
+                    w.stop().variant(match bits {
+                        StopBits::STOP0P5 | StopBits::STOP1 => STOP::Stop1,
+                        StopBits::STOP1P5 | StopBits::STOP2 => STOP::Stop2,
+                    })
+                });
+            }
+        }
+
+        st_uart! {
+            $UARTx,
+        }
+    )+};
+}
+
+st_usart_config_stop_bits! {
+    pac::USART1,
+    pac::USART2,
+    pac::USART3,
+}
+#[cfg(any(all(feature = "stm32f103", feature = "high"), feature = "connectivity"))]
+st_uart_config_stop_bits! {
+    pac::UART4,
+    pac::UART5,
+}
+
+pub trait UartInit<U: UartReg> {
+    fn init_tx_rx(self, config: Config, mcu: &mut Mcu) -> (Tx<U>, Rx<U>);
+    fn init_tx(self, config: Config, mcu: &mut Mcu) -> Tx<U>;
+    fn init_rx(self, config: Config, mcu: &mut Mcu) -> Rx<U>;
+}
+
+impl<U> UartInit<U> for U
+where
+    U: UartReg + UartConfig,
+{
+    fn init_tx_rx(mut self, config: Config, mcu: &mut Mcu) -> (Tx<U>, Rx<U>) {
+        self.enable_clock(&mut mcu.rcc);
+        self.config(config, &mcu.rcc.clocks);
+        // TODO let pins = (pins.0.map(RInto::rinto), pins.1.map(RInto::rinto));
+        self.enable_comm(true, true);
+        (
+            Tx::<U>::new(unsafe { self.steal() }),
+            Rx::<U>::new(unsafe { self.steal() }),
+        )
     }
 
-    pub fn word_length(mut self, wordlength: WordLength) -> Self {
-        self.word_length = wordlength;
-        self
+    fn init_tx(mut self, config: Config, mcu: &mut Mcu) -> Tx<U> {
+        self.enable_clock(&mut mcu.rcc);
+        self.config(config, &mcu.rcc.clocks);
+        self.enable_comm(true, false);
+        Tx::<U>::new(unsafe { self.steal() })
     }
 
-    pub fn word_length_8bits(mut self) -> Self {
-        self.word_length = WordLength::Bits8;
-        self
-    }
-
-    pub fn word_length_9bits(mut self) -> Self {
-        self.word_length = WordLength::Bits9;
-        self
-    }
-
-    pub fn parity(mut self, parity: Parity) -> Self {
-        self.parity = parity;
-        self
-    }
-
-    pub fn parity_none(mut self) -> Self {
-        self.parity = Parity::ParityNone;
-        self
-    }
-
-    pub fn parity_even(mut self) -> Self {
-        self.parity = Parity::ParityEven;
-        self
-    }
-
-    pub fn parity_odd(mut self) -> Self {
-        self.parity = Parity::ParityOdd;
-        self
-    }
-
-    pub fn stop_bits(mut self, stop_bits: StopBits) -> Self {
-        self.stop_bits = stop_bits;
-        self
+    fn init_rx(mut self, config: Config, mcu: &mut Mcu) -> Rx<U> {
+        self.enable_clock(&mut mcu.rcc);
+        self.config(config, &mcu.rcc.clocks);
+        self.enable_comm(false, true);
+        Rx::<U>::new(unsafe { self.steal() })
     }
 }

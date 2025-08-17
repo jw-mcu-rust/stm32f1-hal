@@ -4,7 +4,7 @@ import subprocess
 
 
 def run_cmd(cmd: list[str]) -> None:
-    print(f"Running: {' '.join(cmd)}", flush=True)
+    print(f"\033[1;32mRunning\033[0m: {' '.join(cmd)}", flush=True)
     subprocess.run(cmd, text=True, check=True)
 
 

@@ -11,9 +11,8 @@ pub mod time;
 pub mod timer;
 pub mod uart;
 
-mod pac_ext_stf1;
+mod common;
 
-pub use crate::pac_ext_stf1::Mcu;
 pub use embedded_hal as hal;
 pub use embedded_io as io;
 #[cfg(feature = "stm32f100")]
@@ -40,4 +39,19 @@ pub(crate) trait Steal {
     /// peripheral instance existing to ensure memory safety; ensure
     /// no stolen instances are passed to such software.
     unsafe fn steal(&self) -> Self;
+}
+
+impl<RB, const A: usize> Steal for stm32f1::Periph<RB, A> {
+    unsafe fn steal(&self) -> Self {
+        unsafe { Self::steal() }
+    }
+}
+
+pub struct Mcu {
+    // pub apb1: APB1,
+    // pub apb2: APB2,
+    // pub flash: pac::flash::Parts,
+    // pub afio: pac::afio::Parts,
+    pub rcc: rcc::Rcc,
+    // pub nvic: NVIC,
 }

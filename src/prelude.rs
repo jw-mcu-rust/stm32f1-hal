@@ -1,4 +1,4 @@
-pub use crate::afio::AfioExt as _stm32_hal_afio_AfioExt;
+pub use crate::afio::AfioInit as _stm32_hal_afio_AfioInit;
 pub use crate::afio::RFrom as _;
 pub use crate::afio::RInto as _;
 pub use crate::afio::Remap as _;

@@ -23,18 +23,18 @@ fn main() -> ! {
     let mut gpioa = dp.GPIOA.split(&mut rcc);
     let mut gpiob = dp.GPIOB.split(&mut rcc);
 
-    let afio = dp.AFIO;
+    let afio = dp.AFIO.constrain(&mut rcc);
     let mut mcu = Mcu { rcc, afio };
 
     // UART ---------------------------------------
 
     let config = uart::Config::default();
     let pin_tx = gpioa.pa9.into_alternate_push_pull(&mut gpioa.crh);
-    let pin_rx = gpioa.pa10;
-    let (Some(uart_tx), Some(uart_rx)) = dp
-        .USART1
-        .init(config, &mut mcu)
-        .into_tx_rx((Some(pin_tx), Some(pin_rx)))
+    let pin_rx = gpioa.pa10.into_pull_up_input(&mut gpioa.crh);
+    let (Some(uart_tx), Some(uart_rx)) =
+        dp.USART1
+            .constrain()
+            .into_tx_rx((Some(pin_tx), Some(pin_rx)), config, &mut mcu)
     else {
         panic!()
     };

@@ -51,7 +51,7 @@ pub struct Mcu {
     // pub apb1: APB1,
     // pub apb2: APB2,
     // pub flash: pac::flash::Parts,
-    // pub afio: pac::afio::Parts,
+    pub afio: afio::Afio,
     pub rcc: rcc::Rcc,
     // pub nvic: NVIC,
 }

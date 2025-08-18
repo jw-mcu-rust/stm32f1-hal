@@ -1,20 +1,24 @@
 //! # Alternate Function I/Os
-use crate::pac::{self, afio, AFIO, RCC};
 
-use crate::rcc::{Enable, Reset};
+pub mod uart_remap;
 
 use crate::gpio::{self, Alternate, Cr, Debugger, Floating, Input, OpenDrain, PushPull};
+use crate::pac::{self, AFIO, RCC, afio};
+use crate::rcc::{Enable, Reset};
 
-pub trait AfioExt {
-    fn constrain(self, rcc: &mut RCC) -> Parts;
+type MaprBits = <afio::mapr::MAPRrs as RegisterSpec>::Ux;
+
+pub trait AfioInit {
+    fn constrain(self, rcc: &mut RCC) -> Afio;
 }
 
-impl AfioExt for AFIO {
-    fn constrain(self, rcc: &mut RCC) -> Parts {
+impl AfioInit for AFIO {
+    fn constrain(self, rcc: &mut RCC) -> Afio {
         AFIO::enable(rcc);
         AFIO::reset(rcc);
 
-        Parts {
+        Afio {
+            reg: self,
             evcr: EVCR,
             mapr: MAPR { jtag_enabled: true },
             exticr1: EXTICR1,
@@ -28,14 +32,15 @@ impl AfioExt for AFIO {
 
 /// HAL wrapper around the AFIO registers
 ///
-/// Aquired by calling [constrain](trait.AfioExt.html#constrain) on the [AFIO
+/// Aquired by calling [constrain](trait.AfioInit.html#constrain) on the [AFIO
 /// registers](../pac/struct.AFIO.html)
 ///
 /// ```rust
 /// let p = pac::Peripherals::take().unwrap();
 /// let mut rcc = p.RCC.constrain();
 /// let mut afio = p.AFIO.constrain();
-pub struct Parts {
+pub struct Afio {
+    reg: AFIO,
     pub evcr: EVCR,
     pub mapr: MAPR,
     pub exticr1: EXTICR1,
@@ -56,7 +61,7 @@ impl EVCR {
 
 /// AF remap and debug I/O configuration register (MAPR)
 ///
-/// Aquired through the [Parts](struct.Parts.html) struct.
+/// Aquired through the [Afio](struct.Afio.html) struct.
 ///
 /// ```rust
 /// let dp = pac::Peripherals::take().unwrap();
@@ -74,13 +79,13 @@ impl MAPR {
         unsafe { (*AFIO::ptr()).mapr() }
     }
 
-    pub fn modify_mapr<F>(&mut self, mod_fn: F)
+    pub fn modify_mapr<F>(&mut self, mod_fn: F) -> MaprBits
     where
         F: for<'w> FnOnce(&afio::mapr::R, &'w mut afio::mapr::W) -> &'w mut afio::mapr::W,
     {
         let debug_bits = if self.jtag_enabled { 0b000 } else { 0b010 };
         self.mapr()
-            .modify(unsafe { |r, w| mod_fn(r, w).swj_cfg().bits(debug_bits) });
+            .modify(unsafe { |r, w| mod_fn(r, w).swj_cfg().bits(debug_bits) })
     }
 
     /// Disables the JTAG to free up pa15, pb3 and pb4 for normal use
@@ -1237,3 +1242,4 @@ macro_rules! pin {
     };
 }
 use pin;
+use stm32f1::RegisterSpec;

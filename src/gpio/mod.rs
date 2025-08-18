@@ -231,7 +231,7 @@ impl Interruptable for Dynamic {}
 
 /// External Interrupt Pin
 pub trait ExtiPin {
-    fn make_interrupt_source(&mut self, afio: &mut afio::Parts);
+    fn make_interrupt_source(&mut self, afio: &mut afio::Afio);
     fn trigger_on_edge(&mut self, exti: &mut EXTI, level: Edge);
     fn enable_interrupt(&mut self, exti: &mut EXTI);
     fn disable_interrupt(&mut self, exti: &mut EXTI);
@@ -245,7 +245,7 @@ where
     PIN::Mode: Interruptable,
 {
     /// Make corresponding EXTI line sensitive to this pin
-    fn make_interrupt_source(&mut self, afio: &mut afio::Parts) {
+    fn make_interrupt_source(&mut self, afio: &mut afio::Afio) {
         let pin_number = self.pin_id();
         let port = self.port_id() as u32;
         let offset = 4 * (pin_number % 4);

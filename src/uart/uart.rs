@@ -8,7 +8,7 @@ use crate::pac::uart4::{self, cr1};
 
 use crate::{
     Mcu, Steal, afio,
-    afio::uart_remap::*,
+    afio::{RemapMode, uart_remap::*},
     common::{uart::*, wrap_trait::*},
     pac,
     rcc::{BusClock, Enable, Reset},
@@ -145,11 +145,11 @@ pub trait UartInit<T: Instance> {
 // UART Initialization -------------------------------------------------------------
 
 // Use a wrap to avoid conflicting implementations of trait
-pub struct Uart<T: Instance> {
-    reg: T,
+pub struct Uart<U: Instance> {
+    reg: U,
 }
 
-impl<T: Instance> Steal for Uart<T> {
+impl<U: Instance> Steal for Uart<U> {
     unsafe fn steal(&self) -> Self {
         Self {
             reg: unsafe { self.reg.steal() },
@@ -157,40 +157,56 @@ impl<T: Instance> Steal for Uart<T> {
     }
 }
 
-impl<T: Instance> Uart<T> {
-    pub fn into_tx_rx(
+#[allow(unused_variables)]
+impl<U: Instance> Uart<U> {
+    pub fn into_tx_rx<REMAP: RemapMode>(
         mut self,
-        pins: (Option<impl UartTxPin<Self>>, Option<impl UartRxPin<Self>>),
+        pins: (
+            impl UartTxPin<U, RemapMode = REMAP>,
+            impl UartRxPin<U, RemapMode = REMAP>,
+        ),
         config: Config,
         mcu: &mut Mcu,
-    ) -> (Option<Tx<Self>>, Option<Rx<Self>>) {
-        match (
-            pins.0.as_ref().map(|p| p.set_remap_reg(&mut mcu.afio)),
-            pins.1.as_ref().map(|p| p.set_remap_reg(&mut mcu.afio)),
-        ) {
-            (Some(v1), Some(v2)) => {
-                // Two Pins must correspond to the same remap.
-                assert_eq!(v1, v2)
-            }
-            (None, None) => {
-                panic!("Missing Pins!");
-            }
-            _ => (),
-        }
+    ) -> (Tx<Self>, Rx<Self>) {
+        REMAP::remap(&mut mcu.afio);
         self.config(config, mcu);
-        self.enable_comm(pins.0.is_some(), pins.1.is_some());
+        self.enable_comm(true, true);
         (
-            pins.0.map(|_| Tx::<Self>::new(unsafe { self.steal() })),
-            pins.1.map(|_| Rx::<Self>::new(unsafe { self.steal() })),
+            Tx::<Self>::new(unsafe { self.steal() }),
+            Rx::<Self>::new(unsafe { self.steal() }),
         )
     }
 
+    pub fn into_tx<REMAP: RemapMode>(
+        mut self,
+        tx_pin: impl UartTxPin<U, RemapMode = REMAP>,
+        config: Config,
+        mcu: &mut Mcu,
+    ) -> Tx<Self> {
+        REMAP::remap(&mut mcu.afio);
+        self.config(config, mcu);
+        self.enable_comm(true, false);
+        Tx::<Self>::new(unsafe { self.steal() })
+    }
+
+    pub fn into_rx<REMAP: RemapMode>(
+        mut self,
+        rx_pin: impl UartRxPin<U, RemapMode = REMAP>,
+        config: Config,
+        mcu: &mut Mcu,
+    ) -> Rx<Self> {
+        REMAP::remap(&mut mcu.afio);
+        self.config(config, mcu);
+        self.enable_comm(true, false);
+        Rx::<Self>::new(unsafe { self.steal() })
+    }
+
     fn config(&mut self, config: Config, mcu: &mut Mcu) {
-        T::enable(&mut mcu.rcc);
-        T::reset(&mut mcu.rcc);
+        U::enable(&mut mcu.rcc);
+        U::reset(&mut mcu.rcc);
 
         // Configure baud rate
-        let brr = T::clock(&mcu.rcc.clocks).raw() / config.baudrate;
+        let brr = U::clock(&mcu.rcc.clocks).raw() / config.baudrate;
         assert!(brr >= 16, "impossible baud rate");
         self.reg.brr().write(|w| unsafe { w.bits(brr as u16) });
 
@@ -240,8 +256,7 @@ impl<T: Instance> Uart<T> {
     }
 }
 
-pub type Uart4 = Uart<pac::UART4>;
-pub type Uart5 = Uart<pac::UART5>;
+
 impl_uart_init!(pac::UART4, pac::UART5);
 wrap_trait_deref!(
     (pac::UART4, pac::UART5,),

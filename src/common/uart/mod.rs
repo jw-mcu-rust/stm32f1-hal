@@ -11,7 +11,7 @@ use embedded_io::ErrorKind;
 // pub mod uart_dma_ringbuf_tx;
 // pub use uart_dma_ringbuf_tx::*;
 
-/// Transmitter
+/// UART Transmitter
 pub struct Tx<U: UartReg> {
     uart: U,
 }
@@ -46,7 +46,7 @@ impl<U: UartReg> Tx<U> {
 
 // ------------------------------------------------------------------------------------------------
 
-/// Receiver
+/// UART Receiver
 pub struct Rx<U: UartReg> {
     uart: U,
 }

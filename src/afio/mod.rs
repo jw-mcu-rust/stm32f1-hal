@@ -5,6 +5,7 @@ pub mod uart_remap;
 use crate::gpio::{self, Alternate, Cr, Debugger, Floating, Input, OpenDrain, PushPull};
 use crate::pac::{self, AFIO, RCC, afio};
 use crate::rcc::{Enable, Reset};
+use core::marker::PhantomData;
 
 type MaprBits = <afio::mapr::MAPRrs as RegisterSpec>::Ux;
 
@@ -18,7 +19,7 @@ impl AfioInit for AFIO {
         AFIO::reset(rcc);
 
         Afio {
-            reg: self,
+            _reg: self,
             evcr: EVCR,
             mapr: MAPR { jtag_enabled: true },
             exticr1: EXTICR1,
@@ -40,7 +41,7 @@ impl AfioInit for AFIO {
 /// let mut rcc = p.RCC.constrain();
 /// let mut afio = p.AFIO.constrain();
 pub struct Afio {
-    reg: AFIO,
+    _reg: AFIO,
     pub evcr: EVCR,
     pub mapr: MAPR,
     pub exticr1: EXTICR1,
@@ -57,6 +58,23 @@ impl EVCR {
     pub fn evcr(&mut self) -> &afio::EVCR {
         unsafe { (*AFIO::ptr()).evcr() }
     }
+}
+
+// Remap Mode
+pub trait RemapMode {
+    fn remap(afio: &mut Afio);
+}
+pub struct RemapDefault<PERI> {
+    _p: PhantomData<PERI>,
+}
+pub struct RemapPart1<PERI> {
+    _p: PhantomData<PERI>,
+}
+pub struct RemapPart2<PERI> {
+    _p: PhantomData<PERI>,
+}
+pub struct RemapFull<PERI> {
+    _p: PhantomData<PERI>,
 }
 
 /// AF remap and debug I/O configuration register (MAPR)

@@ -29,15 +29,14 @@ fn main() -> ! {
     // UART ---------------------------------------
 
     let config = uart::Config::default();
-    let pin_tx = gpioa.pa9.into_alternate_push_pull(&mut gpioa.crh);
-    let pin_rx = gpioa.pa10.into_pull_up_input(&mut gpioa.crh);
-    let (Some(uart_tx), Some(uart_rx)) =
-        dp.USART1
-            .constrain()
-            .into_tx_rx((Some(pin_tx), Some(pin_rx)), config, &mut mcu)
-    else {
-        panic!()
-    };
+    // let pin_tx = gpioa.pa9.into_alternate_push_pull(&mut gpioa.crh);
+    // let pin_rx = gpioa.pa10.into_pull_up_input(&mut gpioa.crh);
+    let pin_tx = gpiob.pb6.into_alternate_push_pull(&mut gpiob.crl);
+    let pin_rx = gpiob.pb7.into_pull_up_input(&mut gpiob.crl);
+    let (uart_tx, uart_rx) = dp
+        .USART1
+        .constrain()
+        .into_tx_rx((pin_tx, pin_rx), config, &mut mcu);
     let mut uart_task = UartPollTask::new(uart_tx.into_poll(), uart_rx.into_poll());
 
     // LED ----------------------------------------

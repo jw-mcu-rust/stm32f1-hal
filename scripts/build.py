@@ -3,19 +3,22 @@ import os
 import subprocess
 
 from base import green
+from sync_code import sync_all
 
 
 def run_cmd(cmd: list[str]) -> None:
-    print(f"{green("Running")}: {' '.join(cmd)}", flush=True)
+    print(f"{green('Running')}: {' '.join(cmd)}", flush=True)
     subprocess.run(cmd, text=True, check=True)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mcu", choices=["100", "101", "103", "105", "107"], default="103")
     parser.add_argument("--release", action="store_true")
+    parser.add_argument("--features", type=str, nargs="*")
     parser.add_argument("-e", "--examples", type=str, nargs="*")
     opts = parser.parse_args()
+
+    sync_all()
 
     cmd = ["cargo"]
 
@@ -31,7 +34,12 @@ def main() -> int:
         else:
             cmd.append("check")
 
-        cmd.append(f"--features=stm32f{opts.mcu},xG")
+        if opts.features is None:
+            cmd.append(f"--features=stm32f103,xG")
+        else:
+            print(opts.features)
+            for feature in opts.features:
+                cmd.append(f"--features={feature}")
         run_cmd(cmd)
 
     return 0

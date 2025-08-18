@@ -28,7 +28,7 @@
             "group": "build",
         },
         {
-            "label": "build_f103c8",
+            "label": "build_example_f103c8",
             "type": "process",
             "command": "python",
             "args": [

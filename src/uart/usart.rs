@@ -16,7 +16,7 @@ use core::sync::atomic::{Ordering, compiler_fence};
 
 // Register Block -------------------------------------------------------------
 
-pub trait Instance: RegisterBlock + BusClock + Enable + Reset + Steal + afio::SerialAsync {}
+pub trait Instance: RegisterBlock + BusClock + Enable + Reset + afio::SerialAsync {}
 
 impl<T: Instance> UartPeripheral for Uart<T> {
     #[inline]
@@ -41,7 +41,9 @@ impl<T: Instance> UartPeripheral for Uart<T> {
 
     fn write(&mut self, word: u16) -> nb::Result<(), Infallible> {
         if self.is_tx_empty() {
-            self.periph.dr().write(|w| unsafe { w.dr().bits(word.into()) });
+            self.periph
+                .dr()
+                .write(|w| unsafe { w.dr().bits(word.into()) });
             Ok(())
         } else {
             Err(nb::Error::WouldBlock)
@@ -95,23 +97,28 @@ impl<T: Instance> UartPeripheral for Uart<T> {
                 self.periph.cr1().modify(|_, w| w.idleie().bit(enable));
             }
             UartEvent::RxNotEmpty => {
-
+                self.periph.cr1().modify(|_, w| w.rxneie().bit(enable));
             }
-            _ => (),
+            UartEvent::TxEmpty => {
+                self.periph.cr1().modify(|_, w| w.txeie().bit(enable));
+            }
         }
     }
 
     fn is_interrupted(&mut self, event: UartEvent) -> bool {
+        let sr = self.periph.sr().read();
+        let cr1 = self.periph.cr1().read();
         match event {
             UartEvent::Idle => {
-                if self.periph.sr().read().idle().bit_is_set() {
+                if sr.idle().bit_is_set() && cr1.idleie().bit_is_set() {
                     self.clear_pe_flag();
                     true
                 } else {
                     false
                 }
             }
-            _ => false,
+            UartEvent::RxNotEmpty => sr.rxne().bit_is_set() && cr1.rxneie().bit_is_set(),
+            UartEvent::TxEmpty => sr.txe().bit_is_set() && cr1.txeie().bit_is_set(),
         }
     }
 
@@ -155,7 +162,7 @@ pub struct Uart<U: Instance> {
     periph: U,
 }
 
-impl<U: Instance> Steal for Uart<U> {
+impl<U: Instance + Steal> Steal for Uart<U> {
     unsafe fn steal(&self) -> Self {
         Self {
             periph: unsafe { self.periph.steal() },
@@ -163,8 +170,9 @@ impl<U: Instance> Steal for Uart<U> {
     }
 }
 
+#[allow(private_bounds)]
 #[allow(unused_variables)]
-impl<U: Instance> Uart<U> {
+impl<U: Instance + Steal> Uart<U> {
     pub fn into_tx_rx<REMAP: RemapMode>(
         mut self,
         pins: (
@@ -178,8 +186,8 @@ impl<U: Instance> Uart<U> {
         self.config(config, mcu);
         self.enable_comm(true, true);
         (
-            Tx::<Self>::new(unsafe { self.steal() }),
-            Rx::<Self>::new(unsafe { self.steal() }),
+            Tx::new(unsafe { self.steal() }),
+            Rx::new(unsafe { self.steal() }),
         )
     }
 
@@ -192,7 +200,7 @@ impl<U: Instance> Uart<U> {
         REMAP::remap(&mut mcu.afio);
         self.config(config, mcu);
         self.enable_comm(true, false);
-        Tx::<Self>::new(unsafe { self.steal() })
+        Tx::new(unsafe { self.steal() })
     }
 
     pub fn into_rx<REMAP: RemapMode>(
@@ -205,6 +213,10 @@ impl<U: Instance> Uart<U> {
         self.config(config, mcu);
         self.enable_comm(true, false);
         Rx::<Self>::new(unsafe { self.steal() })
+    }
+
+    pub fn get_interrupt_handler(&self) -> UartInterrupt<Self> {
+        UartInterrupt::new(unsafe { self.steal() })
     }
 
     fn config(&mut self, config: Config, mcu: &mut Mcu) {

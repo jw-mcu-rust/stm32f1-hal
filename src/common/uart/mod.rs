@@ -70,31 +70,31 @@ impl<U: UartPeripheral> Rx<U> {
 
 // ------------------------------------------------------------------------------------------------
 
-/// UART interrupt handler
-// pub struct UartInterrupt<U: UartPeripheral> {
-//     uart: U,
-// }
+// UART interrupt handler
+pub struct UartInterrupt<U: UartPeripheral> {
+    uart: U,
+}
 
-// impl<U: UartPeripheral> UartInterrupt<U> {
-//     pub(crate) fn new(uart: &'static mut U) -> Self {
-//         Self { uart }
-//     }
+impl<U: UartPeripheral> UartInterrupt<U> {
+    pub(crate) fn new(uart: U) -> Self {
+        Self { uart }
+    }
 
-//     #[inline]
-//     pub fn is_interrupted(&mut self, event: UartEvent) -> bool {
-//         self.uart.is_interrupted(event)
-//     }
+    #[inline]
+    pub fn is_interrupted(&mut self, event: UartEvent) -> bool {
+        self.uart.is_interrupted(event)
+    }
 
-//     #[inline]
-//     pub fn listen(&mut self, event: UartEvent) {
-//         self.uart.set_interrupt(event, true);
-//     }
+    #[inline]
+    pub fn listen(&mut self, event: UartEvent) {
+        self.uart.set_interrupt(event, true);
+    }
 
-//     #[inline]
-//     pub fn unlisten(&mut self, event: UartEvent) {
-//         self.uart.set_interrupt(event, false);
-//     }
-// }
+    #[inline]
+    pub fn unlisten(&mut self, event: UartEvent) {
+        self.uart.set_interrupt(event, false);
+    }
+}
 
 // ----------------------------------------------------------------------------
 

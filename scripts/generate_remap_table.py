@@ -41,7 +41,7 @@ def match_filter(filter: str, name: str) -> bool:
     return name.startswith(filter)
 
 
-REG_TEMPLATE = """impl RemapMode for {mode}<{dev}> {{
+REG_TEMPLATE = """impl RemapMode for {mode}<{peri}> {{
     fn remap(afio: &mut Afio) {{
         {op}
     }}
@@ -51,31 +51,30 @@ REG_TEMPLATE = """impl RemapMode for {mode}<{dev}> {{
 
 def write_reg_operation(d: dict, filter: str, w: Write) -> None:
     w.write("\n// Register operation ------------\n\n")
-    for dev, remap_modes in sorted(d.items()):
-        if match_filter(filter, dev):
+    for peri, remap_modes in sorted(d.items()):
+        if match_filter(filter, peri):
             for mode_name, mode_info in sorted(remap_modes.items()):
                 mode = REMAP_MODES[mode_name]
-                reg_bits: str = mode_info["reg_bits"]
-                if len(reg_bits) == 1:
+                reg = mode_info["reg"]
+                bits: str = mode_info["bits"]
+                if reg == "none":
                     op = ""
-                elif len(reg_bits) == 3:
-                    b = "set_bit" if reg_bits[2] == "1" else "clear_bit"
-                    op = f"afio.mapr.modify_mapr(|_, w| w.{dev.lower()}_remap().{b}());"
-                elif len(reg_bits) == 4:
-                    b = f"unsafe {{|_, w| w.{dev.lower()}_remap().bits({reg_bits})}}"
-                    op = f"afio.mapr.modify_mapr({b});"
+                elif len(bits) == 3:
+                    b = "set_bit" if bits[2] == "1" else "clear_bit"
+                    op = f"afio.{reg}.modify_mapr(|_, w| w.{peri.lower()}_remap().{b}());"
+                elif len(bits) == 4:
+                    b = f"unsafe {{|_, w| w.{peri.lower()}_remap().bits({bits})}}"
+                    op = f"afio.{reg}.modify_mapr({b});"
                 else:
                     continue
-                w.write(REG_TEMPLATE.format(mode=mode, dev=dev, op=op))
-                # "afio.mapr.modify_mapr($operation);"
-                # w.write("impl_remap_mode_for!();")
+                w.write(REG_TEMPLATE.format(mode=mode, peri=peri, op=op))
 
 
 def write_binder_type(d: dict, filter: str, w: Write) -> None:
     w.write("\n// Binder types ------------------\n\n")
     func_list: list[str] = []
-    for dev, remap_modes in d.items():
-        if match_filter(filter, dev):
+    for peri, remap_modes in d.items():
+        if match_filter(filter, peri):
             for mode_info in remap_modes.values():
                 for pin_func in mode_info["pins"].keys():
                     func_list.append(pin_func)
@@ -88,21 +87,21 @@ def write_binder_type(d: dict, filter: str, w: Write) -> None:
 
 
 UART_IMPL_TEMPLATE_DICT = {
-    "TX": "impl UartTxPin<{dev}> for {pin}<Alternate<PushPull>> {{",
-    "RX": "impl<PULL: UpMode> UartRxPin<{dev}> for {pin}<Input<PULL>> {{",
+    "TX": "impl UartTxPin<{peri}> for {pin}<Alternate<PushPull>> {{",
+    "RX": "impl<PULL: UpMode> UartRxPin<{peri}> for {pin}<Input<PULL>> {{",
 }
 UART_TEMPLATE = """
-    type RemapMode = {mode}<{dev}>;
+    type RemapMode = {mode}<{peri}>;
 }}
 """
 
 
-def write_uart_item(dev: str, mode: str, pins: dict[str, str], w: Write) -> None:
+def write_uart_item(peri: str, mode: str, pins: dict[str, str], w: Write) -> None:
     for pin_func, pin in sorted(pins.items()):
         impl = UART_IMPL_TEMPLATE_DICT.get(pin_func, "")
         if impl:
-            w.write(impl.format(dev=dev, pin=pin))
-            w.write(UART_TEMPLATE.format(mode=mode, dev=dev))
+            w.write(impl.format(peri=peri, pin=pin))
+            w.write(UART_TEMPLATE.format(mode=mode, peri=peri))
 
 
 def write_table(d: dict, filter: str, csv_file: str, target_file: str) -> None:
@@ -121,28 +120,30 @@ def write_table(d: dict, filter: str, csv_file: str, target_file: str) -> None:
     write_reg_operation(d, filter, w)
     write_binder_type(d, filter, w)
     w.write("\n// Bind pins ---------------------\n\n")
-    for dev, remap_modes in sorted(d.items()):
-        if match_filter(filter, dev):
+    for peri, remap_modes in sorted(d.items()):
+        if match_filter(filter, peri):
             for mode_name, mode_info in sorted(remap_modes.items()):
                 mode = REMAP_MODES[mode_name]
-                write_uart_item(dev, mode, mode_info["pins"], w)
+                write_uart_item(peri, mode, mode_info["pins"], w)
     w.close()
     subprocess.run(["rustfmt", target_file])
 
 
 def parse_remap_info(row: list[str], ret_d: dict) -> None:
     peripheral = row[0]
-    remap_mode = row[1]
-    reg_bits = row[2]
+    reg = row[1]
+    remap_mode = row[2]
+    reg_bits = row[3]
     pins: dict[str, str] = {}
-    for pin in row[3:]:
+    for pin in row[4:]:
         if pin:
             (func, pin) = pin.split(":")
             pins[func] = pin
 
     p = ret_d.setdefault(peripheral, {})
     p[remap_mode] = {
-        "reg_bits": reg_bits,
+        "reg": reg,
+        "bits": reg_bits,
         "pins": pins,
     }
 
@@ -165,4 +166,4 @@ def csv_to_code(csv_file: str, show: bool = False) -> None:
 
 
 if __name__ == "__main__":
-    csv_to_code("scripts/table/stm32f1_remap_device.csv")
+    csv_to_code("scripts/table/stm32f1_remap_peripheral.csv")

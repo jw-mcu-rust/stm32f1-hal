@@ -6,6 +6,8 @@
     version = "0.1.0"
 
 [dependencies]
+    embedded-alloc = "0.6"
+    embedded-io = "0.6"
     nb = "1.1"
     [dependencies.jw-stm32f1-hal]
         features = ["stm32f103", "x8", "critical-section-single-core"]

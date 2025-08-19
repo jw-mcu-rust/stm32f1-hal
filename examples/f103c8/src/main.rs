@@ -4,16 +4,41 @@
 #![allow(unused_variables)]
 #![allow(unused_mut)]
 
-use core::panic::PanicInfo;
+extern crate alloc;
+
+use core::{mem::MaybeUninit, panic::PanicInfo};
 use cortex_m::asm;
 use cortex_m_rt::entry;
-use jw_stm32f1_hal::{Mcu, gpio::PinState, io, pac, prelude::*, rcc, timer::Timer, uart};
+use embedded_alloc::LlffHeap as Heap;
+use jw_stm32f1_hal::{
+    Mcu,
+    gpio::PinState,
+    nvic_scb::PriorityGrouping,
+    pac::{self, Interrupt},
+    prelude::*,
+    rcc,
+    timer::Timer,
+    uart,
+};
+
+mod uart_task;
+use uart_task::UartPollTask;
+
+#[global_allocator]
+static HEAP: Heap = Heap::empty();
+const HEAP_SIZE: usize = 15 * 1024;
+static mut HEAP_MEM: [MaybeUninit<u8>; HEAP_SIZE] = [MaybeUninit::uninit(); HEAP_SIZE];
 
 #[entry]
 fn main() -> ! {
     let cp = cortex_m::Peripherals::take().unwrap();
-    let dp = pac::Peripherals::take().unwrap();
+    let mut scb = cp.SCB.constrain();
+    // Set it as early as possible
+    scb.set_priority_grouping(PriorityGrouping::Group4);
+    // Initialize the heap BEFORE you use it
+    unsafe { HEAP.init(&raw mut HEAP_MEM as usize, HEAP_SIZE) }
 
+    let dp = pac::Peripherals::take().unwrap();
     let mut flash = dp.FLASH.constrain();
     let sysclk = 16.MHz();
     let cfg = rcc::Config::hse(8.MHz()).sysclk(sysclk);
@@ -24,7 +49,13 @@ fn main() -> ! {
     let mut gpiob = dp.GPIOB.split(&mut rcc);
 
     let afio = dp.AFIO.constrain(&mut rcc);
-    let mut mcu = Mcu { rcc, afio };
+    let mut mcu = Mcu {
+        scb,
+        nvic: cp.NVIC.constrain(),
+        rcc,
+        afio,
+    };
+    setup_nvic_priority(&mut mcu);
 
     // UART ---------------------------------------
 
@@ -62,52 +93,15 @@ fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
 
-struct UartPollTask<W, R> {
-    tx: W,
-    rx: R,
-    buf: [u8; 32],
-    tx_i: usize,
-    rx_i: usize,
+// Keep them in one place for easier management
+fn setup_nvic_priority(mcu: &mut Mcu) {
+    mcu.nvic.set_priority(Interrupt::USART1, 10);
 }
 
-impl<W, R> UartPollTask<W, R>
-where
-    W: io::Write,
-    R: io::Read,
-{
-    fn new(tx: W, rx: R) -> Self {
-        Self {
-            tx,
-            rx,
-            buf: [0; 32],
-            tx_i: 0,
-            rx_i: 0,
-        }
-    }
+#[allow(non_snake_case)]
+mod all_it {
+    use super::pac::interrupt;
 
-    fn poll(&mut self) {
-        let mut i = 1;
-        while i > 0 && self.rx_i < 30 {
-            if let Ok(size) = self.rx.read(&mut self.buf[self.rx_i..]) {
-                self.rx_i += size;
-                if size > 0 {
-                    // continually receive
-                    i = 100;
-                }
-            }
-            i -= 1;
-        }
-
-        // loopback
-        if self.rx_i > self.tx_i
-            && let Ok(size) = self.tx.write(&self.buf[self.tx_i..self.rx_i])
-        {
-            self.tx_i += size;
-        }
-
-        if self.rx_i == self.tx_i {
-            self.rx_i = 0;
-            self.tx_i = 0;
-        }
-    }
+    #[interrupt]
+    fn USART1() {}
 }

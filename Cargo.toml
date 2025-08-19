@@ -37,7 +37,7 @@
     has-can = []
     # Devices with Dac
     has-dac = []
-    rtic = ["rtic-monotonic"]
+    rtic = ["dep:rtic-monotonic"]
 
 [dependencies]
     bitflags = "2.9"

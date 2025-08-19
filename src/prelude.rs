@@ -9,14 +9,16 @@ pub use crate::rcc::RccExt as _stm32_hal_rcc_RccExt;
 pub use crate::time::U32Ext as _stm32_hal_time_U32Ext;
 #[cfg(feature = "rtic")]
 pub use crate::timer::MonoTimerExt as _stm32f4xx_hal_timer_MonoTimerExt;
-pub use crate::timer::PwmExt as _stm32f4xx_hal_timer_PwmExt;
-pub use crate::timer::SysTimerExt as _stm32f4xx_hal_timer_SysCounterExt;
-pub use crate::timer::TimerExt as _stm32f4xx_hal_timer_TimerExt;
+pub use crate::timer::PwmExt as _stm32_hal_timer_PwmExt;
+pub use crate::timer::SysTimerExt as _stm32_hal_timer_SysCounterExt;
+pub use crate::timer::TimerExt as _stm32_hal_timer_TimerExt;
 // pub use crate::timer::pwm_input::PwmInputExt as _;
 // pub use crate::timer::pwm_input::QeiExt as _;
+pub use crate::nvic_scb::NvicInit as _;
+pub use crate::nvic_scb::ScbInit as _;
 #[cfg(any(all(feature = "stm32f103", feature = "high"), feature = "connectivity"))]
-pub use crate::uart::uart::UartInit as _stm32_hal_uart_UartInit;
-pub use crate::uart::usart::UartInit as _stm32_hal_usart_UartInit;
+pub use crate::uart::uart::UartInit as _;
+pub use crate::uart::usart::UartInit as _;
 pub use cortex_m;
 pub use cortex_m_rt;
 pub use fugit::ExtU32 as _fugit_ExtU32;

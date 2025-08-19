@@ -5,6 +5,7 @@ pub mod backup_domain;
 pub mod bb;
 pub mod flash;
 pub mod gpio;
+pub mod nvic_scb;
 pub mod prelude;
 pub mod rcc;
 pub mod time;
@@ -51,7 +52,8 @@ pub struct Mcu {
     // pub apb1: APB1,
     // pub apb2: APB2,
     // pub flash: pac::flash::Parts,
-    pub afio: afio::Afio,
+    pub scb: nvic_scb::Scb,
+    pub nvic: nvic_scb::Nvic,
     pub rcc: rcc::Rcc,
-    // pub nvic: NVIC,
+    pub afio: afio::Afio,
 }

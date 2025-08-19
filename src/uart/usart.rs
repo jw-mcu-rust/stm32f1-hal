@@ -18,25 +18,30 @@ use core::sync::atomic::{Ordering, compiler_fence};
 
 pub trait Instance: RegisterBlock + BusClock + Enable + Reset + Steal + afio::SerialAsync {}
 
-impl<T: Instance> UartReg for Uart<T> {
+impl<T: Instance> UartPeripheral for Uart<T> {
     #[inline]
     fn set_dma_tx(&mut self, enable: bool) {
-        self.reg.cr3().modify(|_, w| w.dmat().bit(enable));
+        self.periph.cr3().modify(|_, w| w.dmat().bit(enable));
     }
 
     #[inline]
     fn set_dma_rx(&mut self, enable: bool) {
-        self.reg.cr3().modify(|_, w| w.dmar().bit(enable));
+        self.periph.cr3().modify(|_, w| w.dmar().bit(enable));
     }
 
     #[inline]
     fn is_tx_empty(&self) -> bool {
-        self.reg.sr().read().txe().bit_is_set()
+        self.periph.sr().read().txe().bit_is_set()
+    }
+
+    #[inline]
+    fn is_tx_complete(&self) -> bool {
+        self.periph.sr().read().tc().bit_is_set()
     }
 
     fn write(&mut self, word: u16) -> nb::Result<(), Infallible> {
         if self.is_tx_empty() {
-            self.reg.dr().write(|w| unsafe { w.dr().bits(word.into()) });
+            self.periph.dr().write(|w| unsafe { w.dr().bits(word.into()) });
             Ok(())
         } else {
             Err(nb::Error::WouldBlock)
@@ -44,7 +49,7 @@ impl<T: Instance> UartReg for Uart<T> {
     }
 
     fn read(&mut self) -> nb::Result<u16, Error> {
-        let sr = self.reg.sr().read();
+        let sr = self.periph.sr().read();
 
         // Check for any errors
         let err = if sr.pe().bit_is_set() {
@@ -66,7 +71,7 @@ impl<T: Instance> UartReg for Uart<T> {
             // Check if a byte is available
             if sr.rxne().bit_is_set() {
                 // Read the received byte
-                Ok(self.reg.dr().read().dr().bits())
+                Ok(self.periph.dr().read().dr().bits())
             } else {
                 Err(nb::Error::WouldBlock)
             }
@@ -75,19 +80,22 @@ impl<T: Instance> UartReg for Uart<T> {
 
     #[inline]
     fn get_tx_data_reg_addr(&self) -> u32 {
-        &self.reg.dr() as *const _ as u32
+        &self.periph.dr() as *const _ as u32
     }
 
     #[inline]
     fn get_rx_data_reg_addr(&self) -> u32 {
-        &self.reg.dr() as *const _ as u32
+        &self.periph.dr() as *const _ as u32
     }
 
     #[inline]
     fn set_interrupt(&mut self, event: UartEvent, enable: bool) {
         match event {
             UartEvent::Idle => {
-                self.reg.cr1().modify(|_, w| w.idleie().bit(enable));
+                self.periph.cr1().modify(|_, w| w.idleie().bit(enable));
+            }
+            UartEvent::RxNotEmpty => {
+
             }
             _ => (),
         }
@@ -96,7 +104,7 @@ impl<T: Instance> UartReg for Uart<T> {
     fn is_interrupted(&mut self, event: UartEvent) -> bool {
         match event {
             UartEvent::Idle => {
-                if self.reg.sr().read().idle().bit_is_set() {
+                if self.periph.sr().read().idle().bit_is_set() {
                     self.clear_pe_flag();
                     true
                 } else {
@@ -111,15 +119,15 @@ impl<T: Instance> UartReg for Uart<T> {
     /// followed by a read from the dr register.
     #[inline]
     fn clear_pe_flag(&self) {
-        let _ = self.reg.sr().read();
+        let _ = self.periph.sr().read();
         compiler_fence(Ordering::Acquire);
-        let _ = self.reg.dr().read();
+        let _ = self.periph.dr().read();
         compiler_fence(Ordering::Acquire);
     }
 
     #[inline]
     fn is_rx_not_empty(&self) -> bool {
-        self.reg.sr().read().rxne().bit_is_set()
+        self.periph.sr().read().rxne().bit_is_set()
     }
 }
 
@@ -130,7 +138,7 @@ macro_rules! impl_uart_init {
         impl Instance for $uart {}
         impl UartInit<$uart> for $uart {
             fn constrain(self) -> Uart<$uart> {
-                Uart { reg: self }
+                Uart { periph: self }
             }
         }
     )+};
@@ -144,13 +152,13 @@ pub trait UartInit<T: Instance> {
 
 // Use a wrap to avoid conflicting implementations of trait
 pub struct Uart<U: Instance> {
-    reg: U,
+    periph: U,
 }
 
 impl<U: Instance> Steal for Uart<U> {
     unsafe fn steal(&self) -> Self {
         Self {
-            reg: unsafe { self.reg.steal() },
+            periph: unsafe { self.periph.steal() },
         }
     }
 }
@@ -206,10 +214,10 @@ impl<U: Instance> Uart<U> {
         // Configure baud rate
         let brr = U::clock(&mcu.rcc.clocks).raw() / config.baudrate;
         assert!(brr >= 16, "impossible baud rate");
-        self.reg.brr().write(|w| unsafe { w.bits(brr as u16) });
+        self.periph.brr().write(|w| unsafe { w.bits(brr as u16) });
 
         // Configure word
-        self.reg.cr1().modify(|_, w| {
+        self.periph.cr1().modify(|_, w| {
             w.m().bit(match config.word_length {
                 WordLength::Bits8 => false,
                 WordLength::Bits9 => true,
@@ -230,7 +238,7 @@ impl<U: Instance> Uart<U> {
         // UE: enable USART
         // TE: enable transceiver
         // RE: enable receiver
-        self.reg.cr1().modify(|_, w| {
+        self.periph.cr1().modify(|_, w| {
             w.ue().set_bit();
             w.te().bit(tx);
             w.re().bit(rx);
@@ -243,7 +251,7 @@ impl<U: Instance> Uart<U> {
     fn set_stop_bits(&mut self, bits: StopBits) {
         use pac::usart1::cr2::STOP;
 
-        self.reg.cr2().write(|w| {
+        self.periph.cr2().write(|w| {
             w.stop().variant(match bits {
                 StopBits::STOP0P5 => STOP::Stop0p5,
                 StopBits::STOP1 => STOP::Stop1,

@@ -7,17 +7,17 @@ pub struct UartPollTx<U> {
     uart: U,
 }
 
-impl<U: UartReg> UartPollTx<U> {
+impl<U: UartPeripheral> UartPollTx<U> {
     pub(super) fn new(uart: U) -> Self {
         Self { uart }
     }
 }
 
-impl<U: UartReg> ErrorType for UartPollTx<U> {
+impl<U: UartPeripheral> ErrorType for UartPollTx<U> {
     type Error = Error;
 }
 
-impl<U: UartReg> Write for UartPollTx<U> {
+impl<U: UartPeripheral> Write for UartPollTx<U> {
     fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
         for (i, &b) in buf.iter().enumerate() {
             match self.uart.write(b as u16) {
@@ -34,8 +34,8 @@ impl<U: UartReg> Write for UartPollTx<U> {
     }
 
     fn flush(&mut self) -> Result<(), Self::Error> {
-        for _ in 0..8_000_000 {
-            if self.uart.is_tx_empty() {
+        for _ in 0..4_000_000 {
+            if self.uart.is_tx_complete() {
                 return Ok(());
             }
         }
@@ -47,17 +47,17 @@ pub struct UartPollRx<U: 'static> {
     uart: U,
 }
 
-impl<U: UartReg> UartPollRx<U> {
+impl<U: UartPeripheral> UartPollRx<U> {
     pub(super) fn new(uart: U) -> Self {
         Self { uart }
     }
 }
 
-impl<U: UartReg> ErrorType for UartPollRx<U> {
+impl<U: UartPeripheral> ErrorType for UartPollRx<U> {
     type Error = Error;
 }
 
-impl<U: UartReg> Read for UartPollRx<U> {
+impl<U: UartPeripheral> Read for UartPollRx<U> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
         for i in 0..buf.len() {
             match self.uart.read() {

@@ -12,11 +12,11 @@ use embedded_io::ErrorKind;
 // pub use uart_dma_ringbuf_tx::*;
 
 /// UART Transmitter
-pub struct Tx<U: UartReg> {
+pub struct Tx<U: UartPeripheral> {
     uart: U,
 }
 
-impl<U: UartReg> Tx<U> {
+impl<U: UartPeripheral> Tx<U> {
     pub(crate) fn new(uart: U) -> Self {
         Self { uart }
     }
@@ -47,11 +47,11 @@ impl<U: UartReg> Tx<U> {
 // ------------------------------------------------------------------------------------------------
 
 /// UART Receiver
-pub struct Rx<U: UartReg> {
+pub struct Rx<U: UartPeripheral> {
     uart: U,
 }
 
-impl<U: UartReg> Rx<U> {
+impl<U: UartPeripheral> Rx<U> {
     pub(crate) fn new(uart: U) -> Self {
         Self { uart }
     }
@@ -71,11 +71,11 @@ impl<U: UartReg> Rx<U> {
 // ------------------------------------------------------------------------------------------------
 
 /// UART interrupt handler
-// pub struct UartInterrupt<U: UartReg> {
+// pub struct UartInterrupt<U: UartPeripheral> {
 //     uart: U,
 // }
 
-// impl<U: UartReg> UartInterrupt<U> {
+// impl<U: UartPeripheral> UartInterrupt<U> {
 //     pub(crate) fn new(uart: &'static mut U) -> Self {
 //         Self { uart }
 //     }
@@ -98,13 +98,14 @@ impl<U: UartReg> Rx<U> {
 
 // ----------------------------------------------------------------------------
 
-pub trait UartReg {
+pub trait UartPeripheral {
     fn set_dma_tx(&mut self, enable: bool);
     fn set_dma_rx(&mut self, enable: bool);
 
     fn get_tx_data_reg_addr(&self) -> u32;
     fn write(&mut self, word: u16) -> nb::Result<(), Infallible>;
     fn is_tx_empty(&self) -> bool;
+    fn is_tx_complete(&self) -> bool;
 
     fn get_rx_data_reg_addr(&self) -> u32;
     fn read(&mut self) -> nb::Result<u16, Error>;

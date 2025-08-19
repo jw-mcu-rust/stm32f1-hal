@@ -64,10 +64,10 @@ impl EVCR {
 pub trait RemapMode {
     fn remap(afio: &mut Afio);
 }
-pub struct RemapDefault<PERI>(PhantomData<PERI>);
-pub struct RemapPart1<PERI>(PhantomData<PERI>);
-pub struct RemapPart2<PERI>(PhantomData<PERI>);
-pub struct RemapFull<PERI>(PhantomData<PERI>);
+pub struct RemapDefault<PERIPH>(PhantomData<PERIPH>);
+pub struct RemapPart1<PERIPH>(PhantomData<PERIPH>);
+pub struct RemapPart2<PERIPH>(PhantomData<PERIPH>);
+pub struct RemapFull<PERIPH>(PhantomData<PERIPH>);
 
 /// AF remap and debug I/O configuration register (MAPR)
 ///

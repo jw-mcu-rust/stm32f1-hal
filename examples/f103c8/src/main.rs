@@ -10,7 +10,7 @@ use cortex_m_rt::entry;
 use embedded_alloc::LlffHeap as Heap;
 use jw_stm32f1_hal as hal;
 use jw_stm32f1_hal::{
-    Mcu, embedded_io,
+    Mcu, embedded_hal, embedded_io,
     gpio::PinState,
     nvic_scb::PriorityGrouping,
     pac::{self, Interrupt},
@@ -22,6 +22,8 @@ use jw_stm32f1_hal::{
     uart::{self, UartDev},
 };
 
+mod led_task;
+use led_task::LedTask;
 mod uart_task;
 use uart_task::UartPollTask;
 
@@ -85,18 +87,14 @@ fn main() -> ! {
     let mut led = gpiob
         .pb0
         .into_open_drain_output_with_state(&mut gpiob.crl, PinState::High);
-
     let mut timer = Timer::syst(cp.SYST, &mcu.rcc.clocks).counter_hz();
-    timer.start(20.Hz()).unwrap();
-    let mut t_cnt = 0;
+    let freq = 100.Hz();
+    timer.start(freq).unwrap();
+    let mut led_task = LedTask::new(led, freq.raw());
 
     loop {
         if timer.wait().is_ok() {
-            t_cnt += 1;
-            if t_cnt >= 20 {
-                t_cnt = 0;
-                led.toggle();
-            }
+            led_task.poll();
         }
         uart_task.poll();
     }
@@ -124,10 +122,10 @@ fn uart_interrupt_init<U: UartDev + 'static>(
     callback_handle: &hal::interrupt::Callback,
 ) -> UartPollTask<impl embedded_io::Write + use<U>, impl embedded_io::Read + use<U>> {
     mcu.nvic.enable(it_line, false);
-    let (w, r) = static_ringbuf_init!(u8, 30).split_ref();
-    let (tx, mut tx_it) = tx.into_interrupt(w, r, 100, 1000);
-    let (w, r) = static_ringbuf_init!(u8, 30).split_ref();
-    let (rx, mut rx_it) = rx.into_interrupt(w, r, 100);
+    let (w, r) = static_ringbuf_init!(u8, 64).split_ref();
+    let (tx, mut tx_it) = tx.into_interrupt(w, r, 0, 1000);
+    let (w, r) = static_ringbuf_init!(u8, 64).split_ref();
+    let (rx, mut rx_it) = rx.into_interrupt(w, r, 0);
     callback_handle.set(mcu, move || {
         rx_it.handler();
         tx_it.handler();

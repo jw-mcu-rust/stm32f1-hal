@@ -4,12 +4,11 @@
 #![allow(unused_variables)]
 #![allow(unused_mut)]
 
-extern crate alloc;
-
 use core::{mem::MaybeUninit, panic::PanicInfo};
 use cortex_m::asm;
 use cortex_m_rt::entry;
 use embedded_alloc::LlffHeap as Heap;
+use jw_stm32f1_hal as hal;
 use jw_stm32f1_hal::{
     Mcu,
     gpio::PinState,
@@ -19,6 +18,7 @@ use jw_stm32f1_hal::{
     rcc,
     timer::Timer,
     uart,
+    uart::UartEvent,
 };
 
 mod uart_task;
@@ -55,20 +55,31 @@ fn main() -> ! {
         rcc,
         afio,
     };
-    setup_nvic_priority(&mut mcu);
+
+    // Keep them in one place for easier management
+    mcu.nvic.set_priority(Interrupt::USART1, 10);
 
     // UART ---------------------------------------
 
-    let config = uart::Config::default();
+    let uart1 = dp.USART1.constrain();
+    let mut uart1_it = uart1.get_interrupt_handler();
+
     // let pin_tx = gpioa.pa9.into_alternate_push_pull(&mut gpioa.crh);
     // let pin_rx = gpioa.pa10.into_pull_up_input(&mut gpioa.crh);
     let pin_tx = gpiob.pb6.into_alternate_push_pull(&mut gpiob.crl);
     let pin_rx = gpiob.pb7.into_pull_up_input(&mut gpiob.crl);
-    let (uart_tx, uart_rx) = dp
-        .USART1
-        .constrain()
-        .into_tx_rx((pin_tx, pin_rx), config, &mut mcu);
-    let mut uart_task = UartPollTask::new(uart_tx.into_poll(), uart_rx.into_poll());
+    let config = uart::Config::default();
+    let (uart_tx, uart_rx) = uart1.into_tx_rx((pin_tx, pin_rx), config, &mut mcu);
+    let (uart_tx, uart_rx) = (uart_tx.into_poll(), uart_rx.into_poll());
+    let mut uart_task = UartPollTask::new(uart_tx, uart_rx);
+
+    uart1_it.listen(UartEvent::Idle);
+    all_it::USART1_CB.set(
+        &mut mcu,
+        move || {
+            if uart1_it.is_interrupted(UartEvent::Idle) {}
+        },
+    );
 
     // LED ----------------------------------------
 
@@ -93,15 +104,8 @@ fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
 
-// Keep them in one place for easier management
-fn setup_nvic_priority(mcu: &mut Mcu) {
-    mcu.nvic.set_priority(Interrupt::USART1, 10);
-}
-
-#[allow(non_snake_case)]
 mod all_it {
-    use super::pac::interrupt;
+    use super::hal::{interrupt_callback, pac::interrupt};
 
-    #[interrupt]
-    fn USART1() {}
+    interrupt_callback!(USART1, USART1_CB);
 }

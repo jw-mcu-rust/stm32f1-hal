@@ -1,10 +1,13 @@
 #![no_std]
 
+extern crate alloc;
+
 pub mod afio;
 pub mod backup_domain;
 pub mod bb;
 pub mod flash;
 pub mod gpio;
+pub mod interrupt;
 pub mod nvic_scb;
 pub mod prelude;
 pub mod rcc;

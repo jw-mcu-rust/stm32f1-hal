@@ -185,10 +185,7 @@ impl<U: Instance + Steal> Uart<U> {
         REMAP::remap(&mut mcu.afio);
         self.config(config, mcu);
         self.enable_comm(true, true);
-        (
-            Tx::new(unsafe { self.steal() }),
-            Rx::new(unsafe { self.steal() }),
-        )
+        unsafe { (Tx::new(self.steal()), Rx::new(self.steal())) }
     }
 
     pub fn into_tx<REMAP: RemapMode>(

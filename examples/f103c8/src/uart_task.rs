@@ -1,4 +1,4 @@
-use embedded_io::{Read, Write};
+use crate::embedded_io::{Read, Write};
 
 pub struct UartPollTask<W, R> {
     tx: W,
@@ -24,16 +24,10 @@ where
     }
 
     pub fn poll(&mut self) {
-        let mut i = 1;
-        while i > 0 && self.rx_i < 30 {
+        if self.rx_i < 30 {
             if let Ok(size) = self.rx.read(&mut self.buf[self.rx_i..]) {
                 self.rx_i += size;
-                if size > 0 {
-                    // continually receive
-                    i = 100;
-                }
             }
-            i -= 1;
         }
 
         // loopback
@@ -43,9 +37,10 @@ where
             self.tx_i += size;
         }
 
-        if self.rx_i == self.tx_i {
+        if self.rx_i > 10 && self.rx_i == self.tx_i {
             self.rx_i = 0;
             self.tx_i = 0;
+            self.tx.flush().unwrap();
         }
     }
 }

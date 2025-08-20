@@ -16,9 +16,11 @@ pub mod timer;
 pub mod uart;
 
 mod common;
+mod os;
 
-pub use embedded_hal as hal;
-pub use embedded_io as io;
+pub use embedded_hal;
+pub use embedded_io;
+pub use nb;
 #[cfg(feature = "stm32f100")]
 pub use stm32f1::stm32f100 as pac;
 #[cfg(feature = "stm32f101")]

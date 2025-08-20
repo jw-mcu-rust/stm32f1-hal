@@ -10,7 +10,7 @@ use cortex_m_rt::entry;
 use embedded_alloc::LlffHeap as Heap;
 use jw_stm32f1_hal as hal;
 use jw_stm32f1_hal::{
-    Mcu,
+    Mcu, embedded_io,
     gpio::PinState,
     nvic_scb::PriorityGrouping,
     pac::{self, Interrupt},
@@ -70,7 +70,7 @@ fn main() -> ! {
     let pin_rx = gpiob.pb7.into_pull_up_input(&mut gpiob.crl);
     let config = uart::Config::default();
     let (uart_tx, uart_rx) = uart1.into_tx_rx((pin_tx, pin_rx), config, &mut mcu);
-    let (uart_tx, uart_rx) = (uart_tx.into_poll(), uart_rx.into_poll());
+    let (uart_tx, uart_rx) = (uart_tx.into_poll(10000), uart_rx.into_poll(100));
     let mut uart_task = UartPollTask::new(uart_tx, uart_rx);
 
     uart1_it.listen(UartEvent::Idle);

@@ -25,8 +25,8 @@ impl<U: UartPeripheral> Tx<U> {
     //     UartInterrupt::new(unsafe { self.uart.steal_mut() })
     // }
 
-    pub fn into_poll(self) -> UartPollTx<U> {
-        UartPollTx::<U>::new(self.uart)
+    pub fn into_poll(self, flush_retry_times: u32) -> UartPollTx<U> {
+        UartPollTx::<U>::new(self.uart, flush_retry_times)
     }
 
     // pub fn into_dma<CH>(self, dma_ch: CH) -> UartDmaTx<U, CH>
@@ -56,8 +56,8 @@ impl<U: UartPeripheral> Rx<U> {
         Self { uart }
     }
 
-    pub fn into_poll(self) -> UartPollRx<U> {
-        UartPollRx::<U>::new(self.uart)
+    pub fn into_poll(self, continu_receive_retry_times: u32) -> UartPollRx<U> {
+        UartPollRx::<U>::new(self.uart, continu_receive_retry_times)
     }
 
     // pub fn into_dma_circle<CH>(self, dma_ch: CH, buf_size: usize) -> UartDmaBufRx<U, CH>

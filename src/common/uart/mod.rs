@@ -1,4 +1,5 @@
-use embedded_io::ErrorKind;
+use embedded_hal_nb as e_nb;
+use embedded_io as e_io;
 use ringbuf::traits::{Consumer, Producer};
 
 mod uart_it;
@@ -29,9 +30,9 @@ impl<U: UartDev> Tx<U> {
     //     UartInterrupt::new(unsafe { self.uart.steal_mut() })
     // }
 
-    pub fn into_poll(self, flush_retry_times: u32) -> UartPollTx<U> {
+    pub fn into_poll(self, retry_times: u32, flush_retry_times: u32) -> UartPollTx<U> {
         let [uart, _] = self.uart;
-        UartPollTx::<U>::new(uart, flush_retry_times)
+        UartPollTx::<U>::new(uart, retry_times, flush_retry_times)
     }
 
     pub fn into_interrupt<W: Producer, R: Consumer>(
@@ -75,9 +76,9 @@ impl<U: UartDev> Rx<U> {
         Self { uart }
     }
 
-    pub fn into_poll(self, continue_retry_times: u32) -> UartPollRx<U> {
+    pub fn into_poll(self, retry_times: u32, continue_retry_times: u32) -> UartPollRx<U> {
         let [uart, _] = self.uart;
-        UartPollRx::<U>::new(uart, continue_retry_times)
+        UartPollRx::<U>::new(uart, retry_times, continue_retry_times)
     }
 
     pub fn into_interrupt<W: Producer, R: Consumer>(
@@ -137,7 +138,7 @@ pub trait UartDev {
     fn set_dma_rx(&mut self, enable: bool);
 
     fn get_tx_data_reg_addr(&self) -> u32;
-    fn write(&mut self, word: u16) -> nb::Result<(), Infallible>;
+    fn write(&mut self, word: u16) -> nb::Result<(), Error>;
     fn is_tx_empty(&self) -> bool;
     fn is_tx_complete(&self) -> bool;
 
@@ -182,14 +183,29 @@ pub enum Error {
 }
 
 impl embedded_io::Error for Error {
-    fn kind(&self) -> ErrorKind {
+    #[inline]
+    fn kind(&self) -> e_io::ErrorKind {
         match self {
-            Error::Overrun => ErrorKind::InvalidData,
-            Error::FrameFormat => ErrorKind::InvalidData,
-            Error::Parity => ErrorKind::InvalidData,
-            Error::Noise => ErrorKind::InvalidData,
-            Error::Busy => ErrorKind::Interrupted,
-            Error::Other => ErrorKind::Other,
+            Error::Overrun => e_io::ErrorKind::InvalidData,
+            Error::FrameFormat => e_io::ErrorKind::InvalidData,
+            Error::Parity => e_io::ErrorKind::InvalidData,
+            Error::Noise => e_io::ErrorKind::InvalidData,
+            Error::Busy => e_io::ErrorKind::Interrupted,
+            Error::Other => e_io::ErrorKind::Other,
+        }
+    }
+}
+
+impl e_nb::serial::Error for Error {
+    #[inline]
+    fn kind(&self) -> e_nb::serial::ErrorKind {
+        match self {
+            Error::Overrun => e_nb::serial::ErrorKind::Overrun,
+            Error::FrameFormat => e_nb::serial::ErrorKind::FrameFormat,
+            Error::Parity => e_nb::serial::ErrorKind::Parity,
+            Error::Noise => e_nb::serial::ErrorKind::Noise,
+            Error::Busy => e_nb::serial::ErrorKind::Other,
+            Error::Other => e_nb::serial::ErrorKind::Other,
         }
     }
 }

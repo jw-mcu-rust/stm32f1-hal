@@ -39,7 +39,7 @@ impl<T: Instance> UartDev for Uart<T> {
         self.periph.sr().read().tc().bit_is_set()
     }
 
-    fn write(&mut self, word: u16) -> nb::Result<(), Infallible> {
+    fn write(&mut self, word: u16) -> nb::Result<(), Error> {
         if self.is_tx_empty() {
             self.periph
                 .dr()

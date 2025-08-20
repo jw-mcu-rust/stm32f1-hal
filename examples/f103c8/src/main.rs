@@ -110,7 +110,7 @@ fn uart_poll_init<U: UartDev>(
     tx: uart::Tx<U>,
     rx: uart::Rx<U>,
 ) -> UartPollTask<impl embedded_io::Write, impl embedded_io::Read> {
-    let (uart_tx, uart_rx) = (tx.into_poll(1000), rx.into_poll(100));
+    let (uart_tx, uart_rx) = (tx.into_poll(0, 10_000), rx.into_poll(0, 1_000));
     UartPollTask::new(uart_tx, uart_rx)
 }
 
@@ -123,7 +123,7 @@ fn uart_interrupt_init<U: UartDev + 'static>(
 ) -> UartPollTask<impl embedded_io::Write + use<U>, impl embedded_io::Read + use<U>> {
     mcu.nvic.enable(it_line, false);
     let (w, r) = static_ringbuf_init!(u8, 64).split_ref();
-    let (tx, mut tx_it) = tx.into_interrupt(w, r, 0, 1000);
+    let (tx, mut tx_it) = tx.into_interrupt(w, r, 0, 10_000);
     let (w, r) = static_ringbuf_init!(u8, 64).split_ref();
     let (rx, mut rx_it) = rx.into_interrupt(w, r, 0);
     callback_handle.set(mcu, move || {

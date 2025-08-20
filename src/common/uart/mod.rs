@@ -1,9 +1,13 @@
-pub mod uart_poll;
+use embedded_io::ErrorKind;
+use ringbuf::traits::{Consumer, Producer};
+
+mod uart_it;
+mod uart_poll;
 
 pub use core::convert::Infallible;
+pub use uart_it::*;
 pub use uart_poll::*;
 
-use embedded_io::ErrorKind;
 // pub mod uart_dma_tx;
 // pub use uart_dma_tx::*;
 // pub mod uart_dma_ringbuf_rx;
@@ -12,12 +16,12 @@ use embedded_io::ErrorKind;
 // pub use uart_dma_ringbuf_tx::*;
 
 /// UART Transmitter
-pub struct Tx<U: UartPeripheral> {
-    uart: U,
+pub struct Tx<U> {
+    uart: [U; 2],
 }
 
-impl<U: UartPeripheral> Tx<U> {
-    pub(crate) fn new(uart: U) -> Self {
+impl<U: UartDev> Tx<U> {
+    pub(crate) fn new(uart: [U; 2]) -> Self {
         Self { uart }
     }
 
@@ -26,7 +30,22 @@ impl<U: UartPeripheral> Tx<U> {
     // }
 
     pub fn into_poll(self, flush_retry_times: u32) -> UartPollTx<U> {
-        UartPollTx::<U>::new(self.uart, flush_retry_times)
+        let [uart, _] = self.uart;
+        UartPollTx::<U>::new(uart, flush_retry_times)
+    }
+
+    pub fn into_interrupt<W: Producer, R: Consumer>(
+        self,
+        w: W,
+        r: R,
+        transmit_retry_times: u32,
+        flush_retry_times: u32,
+    ) -> (UartInterruptTx<U, W>, UartInterruptTxHandler<U, R>) {
+        let [u1, u2] = self.uart;
+        (
+            UartInterruptTx::new(u1, w, transmit_retry_times, flush_retry_times),
+            UartInterruptTxHandler::new(u2, r),
+        )
     }
 
     // pub fn into_dma<CH>(self, dma_ch: CH) -> UartDmaTx<U, CH>
@@ -47,17 +66,31 @@ impl<U: UartPeripheral> Tx<U> {
 // ------------------------------------------------------------------------------------------------
 
 /// UART Receiver
-pub struct Rx<U: UartPeripheral> {
-    uart: U,
+pub struct Rx<U: UartDev> {
+    uart: [U; 2],
 }
 
-impl<U: UartPeripheral> Rx<U> {
-    pub(crate) fn new(uart: U) -> Self {
+impl<U: UartDev> Rx<U> {
+    pub(crate) fn new(uart: [U; 2]) -> Self {
         Self { uart }
     }
 
-    pub fn into_poll(self, continu_receive_retry_times: u32) -> UartPollRx<U> {
-        UartPollRx::<U>::new(self.uart, continu_receive_retry_times)
+    pub fn into_poll(self, continue_retry_times: u32) -> UartPollRx<U> {
+        let [uart, _] = self.uart;
+        UartPollRx::<U>::new(uart, continue_retry_times)
+    }
+
+    pub fn into_interrupt<W: Producer, R: Consumer>(
+        self,
+        w: W,
+        r: R,
+        retry_times: u32,
+    ) -> (UartInterruptRx<U, R>, UartInterruptRxHandler<U, W>) {
+        let [u1, u2] = self.uart;
+        (
+            UartInterruptRx::new(u1, r, retry_times),
+            UartInterruptRxHandler::new(u2, w),
+        )
     }
 
     // pub fn into_dma_circle<CH>(self, dma_ch: CH, buf_size: usize) -> UartDmaBufRx<U, CH>
@@ -70,12 +103,13 @@ impl<U: UartPeripheral> Rx<U> {
 
 // ------------------------------------------------------------------------------------------------
 
+// TODO rename to idle interrupt
 // UART interrupt handler
-pub struct UartInterrupt<U: UartPeripheral> {
+pub struct UartInterrupt<U: UartDev> {
     uart: U,
 }
 
-impl<U: UartPeripheral> UartInterrupt<U> {
+impl<U: UartDev> UartInterrupt<U> {
     pub(crate) fn new(uart: U) -> Self {
         Self { uart }
     }
@@ -98,7 +132,7 @@ impl<U: UartPeripheral> UartInterrupt<U> {
 
 // ----------------------------------------------------------------------------
 
-pub trait UartPeripheral {
+pub trait UartDev {
     fn set_dma_tx(&mut self, enable: bool);
     fn set_dma_rx(&mut self, enable: bool);
 
@@ -112,9 +146,10 @@ pub trait UartPeripheral {
     fn is_rx_not_empty(&self) -> bool;
 
     fn set_interrupt(&mut self, event: UartEvent, enable: bool);
+    fn is_interrupt_enable(&mut self, event: UartEvent) -> bool;
     fn is_interrupted(&mut self, event: UartEvent) -> bool;
 
-    fn clear_pe_flag(&self);
+    fn clear_err_flag(&self);
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

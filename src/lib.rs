@@ -21,6 +21,7 @@ mod os;
 pub use embedded_hal;
 pub use embedded_io;
 pub use nb;
+pub use ringbuf;
 #[cfg(feature = "stm32f100")]
 pub use stm32f1::stm32f100 as pac;
 #[cfg(feature = "stm32f101")]

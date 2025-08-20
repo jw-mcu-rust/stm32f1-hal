@@ -16,9 +16,10 @@ use jw_stm32f1_hal::{
     pac::{self, Interrupt},
     prelude::*,
     rcc,
+    ringbuf::{StaticRb, traits::*},
+    static_ringbuf_init,
     timer::Timer,
-    uart,
-    uart::UartEvent,
+    uart::{self, UartDev},
 };
 
 mod uart_task;
@@ -40,7 +41,7 @@ fn main() -> ! {
 
     let dp = pac::Peripherals::take().unwrap();
     let mut flash = dp.FLASH.constrain();
-    let sysclk = 16.MHz();
+    let sysclk = 72.MHz();
     let cfg = rcc::Config::hse(8.MHz()).sysclk(sysclk);
     let mut rcc = dp.RCC.constrain().freeze(cfg, &mut flash.acr);
     assert_eq!(rcc.clocks.sysclk(), sysclk);
@@ -61,24 +62,22 @@ fn main() -> ! {
 
     // UART ---------------------------------------
 
-    let uart1 = dp.USART1.constrain();
-    let mut uart1_it = uart1.get_interrupt_handler();
-
     // let pin_tx = gpioa.pa9.into_alternate_push_pull(&mut gpioa.crh);
     // let pin_rx = gpioa.pa10.into_pull_up_input(&mut gpioa.crh);
     let pin_tx = gpiob.pb6.into_alternate_push_pull(&mut gpiob.crl);
     let pin_rx = gpiob.pb7.into_pull_up_input(&mut gpiob.crl);
-    let config = uart::Config::default();
-    let (uart_tx, uart_rx) = uart1.into_tx_rx((pin_tx, pin_rx), config, &mut mcu);
-    let (uart_tx, uart_rx) = (uart_tx.into_poll(10000), uart_rx.into_poll(100));
-    let mut uart_task = UartPollTask::new(uart_tx, uart_rx);
 
-    uart1_it.listen(UartEvent::Idle);
-    all_it::USART1_CB.set(
+    let config = uart::Config::default();
+    let uart1 = dp.USART1.constrain();
+    let (uart_tx, uart_rx) = uart1.into_tx_rx((pin_tx, pin_rx), config, &mut mcu);
+
+    // let mut uart_task = uart_poll_init(uart_tx, uart_rx);
+    let mut uart_task = uart_interrupt_init(
+        uart_tx,
+        uart_rx,
         &mut mcu,
-        move || {
-            if uart1_it.is_interrupted(UartEvent::Idle) {}
-        },
+        pac::interrupt::USART1,
+        &all_it::USART1_CB,
     );
 
     // LED ----------------------------------------
@@ -88,11 +87,16 @@ fn main() -> ! {
         .into_open_drain_output_with_state(&mut gpiob.crl, PinState::High);
 
     let mut timer = Timer::syst(cp.SYST, &mcu.rcc.clocks).counter_hz();
-    timer.start(2.Hz()).unwrap();
+    timer.start(20.Hz()).unwrap();
+    let mut t_cnt = 0;
 
     loop {
         if timer.wait().is_ok() {
-            led.toggle();
+            t_cnt += 1;
+            if t_cnt >= 20 {
+                t_cnt = 0;
+                led.toggle();
+            }
         }
         uart_task.poll();
     }
@@ -104,8 +108,35 @@ fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
 
-mod all_it {
-    use super::hal::{interrupt_callback, pac::interrupt};
+fn uart_poll_init<U: UartDev>(
+    tx: uart::Tx<U>,
+    rx: uart::Rx<U>,
+) -> UartPollTask<impl embedded_io::Write, impl embedded_io::Read> {
+    let (uart_tx, uart_rx) = (tx.into_poll(1000), rx.into_poll(100));
+    UartPollTask::new(uart_tx, uart_rx)
+}
 
-    interrupt_callback!(USART1, USART1_CB);
+fn uart_interrupt_init<U: UartDev + 'static>(
+    tx: uart::Tx<U>,
+    rx: uart::Rx<U>,
+    mcu: &mut Mcu,
+    it_line: pac::interrupt,
+    callback_handle: &hal::interrupt::Callback,
+) -> UartPollTask<impl embedded_io::Write + use<U>, impl embedded_io::Read + use<U>> {
+    mcu.nvic.enable(it_line, false);
+    let (w, r) = static_ringbuf_init!(u8, 30).split_ref();
+    let (tx, mut tx_it) = tx.into_interrupt(w, r, 100, 1000);
+    let (w, r) = static_ringbuf_init!(u8, 30).split_ref();
+    let (rx, mut rx_it) = rx.into_interrupt(w, r, 100);
+    callback_handle.set(mcu, move || {
+        rx_it.handler();
+        tx_it.handler();
+    });
+    UartPollTask::new(tx, rx)
+}
+
+mod all_it {
+    use super::hal::{interrupt_handler, pac::interrupt};
+
+    interrupt_handler!((USART1, USART1_CB), (EXTI1, EXTI1_CB),);
 }

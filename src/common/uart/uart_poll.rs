@@ -11,7 +11,7 @@ pub struct UartPollTx<U> {
     flush_retry_times: u32,
 }
 
-impl<U: UartPeripheral> UartPollTx<U> {
+impl<U: UartDev> UartPollTx<U> {
     pub(super) fn new(uart: U, flush_retry_times: u32) -> Self {
         Self {
             uart,
@@ -20,11 +20,11 @@ impl<U: UartPeripheral> UartPollTx<U> {
     }
 }
 
-impl<U: UartPeripheral> ErrorType for UartPollTx<U> {
+impl<U: UartDev> ErrorType for UartPollTx<U> {
     type Error = Error;
 }
 
-impl<U: UartPeripheral> Write for UartPollTx<U> {
+impl<U: UartDev> Write for UartPollTx<U> {
     fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
         for (i, &data) in buf.iter().enumerate() {
             match self.uart.write(data as u16) {
@@ -59,25 +59,25 @@ impl<U: UartPeripheral> Write for UartPollTx<U> {
 
 pub struct UartPollRx<U> {
     uart: U,
-    continue_receive_retry_times: u32,
+    continue_retry_times: u32,
 }
 
-impl<U: UartPeripheral> UartPollRx<U> {
-    pub(super) fn new(uart: U, continue_receive_retry_times: u32) -> Self {
+impl<U: UartDev> UartPollRx<U> {
+    pub(super) fn new(uart: U, continue_retry_times: u32) -> Self {
         Self {
             uart,
-            continue_receive_retry_times,
+            continue_retry_times,
         }
     }
 }
 
-impl<U: UartPeripheral> ErrorType for UartPollRx<U> {
+impl<U: UartDev> ErrorType for UartPollRx<U> {
     type Error = Error;
 }
 
-impl<U: UartPeripheral> Read for UartPollRx<U> {
+impl<U: UartDev> Read for UartPollRx<U> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
-        let mut retry = self.continue_receive_retry_times;
+        let mut retry = self.continue_retry_times;
 
         let mut i = 0;
         while i < buf.len() {
@@ -89,7 +89,7 @@ impl<U: UartPeripheral> Read for UartPollRx<U> {
                 }
                 Err(nb::Error::WouldBlock) => {
                     retry += 1;
-                    if retry > self.continue_receive_retry_times {
+                    if retry > self.continue_retry_times {
                         return Ok(i);
                     }
                     os::yield_cpu();

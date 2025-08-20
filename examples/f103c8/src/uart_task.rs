@@ -1,6 +1,6 @@
 use crate::embedded_io::{Read, Write};
 
-pub struct UartPollTask<W, R> {
+pub struct UartPollTask<W: Write, R: Read> {
     tx: W,
     rx: R,
     buf: [u8; 32],

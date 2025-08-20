@@ -18,7 +18,7 @@ use core::sync::atomic::{Ordering, compiler_fence};
 
 pub trait Instance: RegisterBlock + BusClock + Enable + Reset + afio::SerialAsync {}
 
-impl<T: Instance> UartPeripheral for Uart<T> {
+impl<T: Instance> UartDev for Uart<T> {
     #[inline]
     fn set_dma_tx(&mut self, enable: bool) {
         self.periph.cr3().modify(|_, w| w.dmat().bit(enable));
@@ -67,7 +67,7 @@ impl<T: Instance> UartPeripheral for Uart<T> {
         };
 
         if let Some(err) = err {
-            self.clear_pe_flag();
+            self.clear_err_flag();
             Err(nb::Error::Other(err))
         } else {
             // Check if a byte is available
@@ -105,19 +105,31 @@ impl<T: Instance> UartPeripheral for Uart<T> {
         }
     }
 
+    #[inline]
+    fn is_interrupt_enable(&mut self, event: UartEvent) -> bool {
+        let cr1 = self.periph.cr1().read();
+        match event {
+            UartEvent::Idle => cr1.idleie().bit_is_set(),
+            UartEvent::RxNotEmpty => cr1.rxneie().bit_is_set(),
+            UartEvent::TxEmpty => cr1.txeie().bit_is_set(),
+        }
+    }
+
     fn is_interrupted(&mut self, event: UartEvent) -> bool {
         let sr = self.periph.sr().read();
         let cr1 = self.periph.cr1().read();
         match event {
             UartEvent::Idle => {
                 if sr.idle().bit_is_set() && cr1.idleie().bit_is_set() {
-                    self.clear_pe_flag();
+                    self.clear_err_flag();
                     true
                 } else {
                     false
                 }
             }
-            UartEvent::RxNotEmpty => sr.rxne().bit_is_set() && cr1.rxneie().bit_is_set(),
+            UartEvent::RxNotEmpty => {
+                (sr.rxne().bit_is_set() || sr.ore().bit_is_set()) && cr1.rxneie().bit_is_set()
+            }
             UartEvent::TxEmpty => sr.txe().bit_is_set() && cr1.txeie().bit_is_set(),
         }
     }
@@ -125,7 +137,7 @@ impl<T: Instance> UartPeripheral for Uart<T> {
     /// In order to clear that error flag, you have to do a read from the sr register
     /// followed by a read from the dr register.
     #[inline]
-    fn clear_pe_flag(&self) {
+    fn clear_err_flag(&self) {
         let _ = self.periph.sr().read();
         compiler_fence(Ordering::Acquire);
         let _ = self.periph.dr().read();
@@ -162,17 +174,15 @@ pub struct Uart<U: Instance> {
     periph: U,
 }
 
-impl<U: Instance + Steal> Steal for Uart<U> {
-    unsafe fn steal(&self) -> Self {
+#[allow(private_bounds)]
+#[allow(unused_variables)]
+impl<U: Instance + Steal> Uart<U> {
+    fn steal(&self) -> Self {
         Self {
             periph: unsafe { self.periph.steal() },
         }
     }
-}
 
-#[allow(private_bounds)]
-#[allow(unused_variables)]
-impl<U: Instance + Steal> Uart<U> {
     pub fn into_tx_rx<REMAP: RemapMode>(
         mut self,
         pins: (
@@ -185,7 +195,10 @@ impl<U: Instance + Steal> Uart<U> {
         REMAP::remap(&mut mcu.afio);
         self.config(config, mcu);
         self.enable_comm(true, true);
-        unsafe { (Tx::new(self.steal()), Rx::new(self.steal())) }
+        (
+            Tx::new([self.steal(), self.steal()]),
+            Rx::new([self.steal(), self.steal()]),
+        )
     }
 
     pub fn into_tx<REMAP: RemapMode>(
@@ -197,7 +210,7 @@ impl<U: Instance + Steal> Uart<U> {
         REMAP::remap(&mut mcu.afio);
         self.config(config, mcu);
         self.enable_comm(true, false);
-        Tx::new(unsafe { self.steal() })
+        Tx::new([self.steal(), self.steal()])
     }
 
     pub fn into_rx<REMAP: RemapMode>(
@@ -209,11 +222,11 @@ impl<U: Instance + Steal> Uart<U> {
         REMAP::remap(&mut mcu.afio);
         self.config(config, mcu);
         self.enable_comm(true, false);
-        Rx::<Self>::new(unsafe { self.steal() })
+        Rx::<Self>::new([self.steal(), self.steal()])
     }
 
     pub fn get_interrupt_handler(&self) -> UartInterrupt<Self> {
-        UartInterrupt::new(unsafe { self.steal() })
+        UartInterrupt::new(self.steal())
     }
 
     fn config(&mut self, config: Config, mcu: &mut Mcu) {

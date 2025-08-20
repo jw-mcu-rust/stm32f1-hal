@@ -38,14 +38,17 @@ impl Callback {
 }
 
 #[macro_export]
-macro_rules! interrupt_callback {
-    ($LINE:ident, $CALLBACK:ident) => {
+macro_rules! interrupt_handler {
+    ($(
+        ($LINE:ident, $CALLBACK:ident),
+    )+) => {$(
         pub static $CALLBACK: $crate::interrupt::Callback =
             $crate::interrupt::Callback::new($crate::pac::interrupt::$LINE);
+
         #[allow(non_snake_case)]
         #[interrupt]
         fn $LINE() {
             unsafe { $CALLBACK.call() }
         }
-    };
+    )+};
 }

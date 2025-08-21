@@ -1,4 +1,4 @@
-use crate::ringbuf::{Consumer, Producer};
+use crate::ringbuf::{Consumer, Producer, RingBuffer};
 use embedded_hal_nb as e_nb;
 use embedded_io as e_io;
 
@@ -37,11 +37,11 @@ impl<U: UartDev> Tx<U> {
 
     pub fn into_interrupt(
         self,
-        w: Producer<u8>,
-        r: Consumer<u8>,
+        buf_size: usize,
         transmit_retry_times: u32,
         flush_retry_times: u32,
     ) -> (UartInterruptTx<U>, UartInterruptTxHandler<U>) {
+        let (w, r) = RingBuffer::<u8>::new(buf_size);
         let [u1, u2] = self.uart;
         (
             UartInterruptTx::new(u1, w, transmit_retry_times, flush_retry_times),
@@ -83,10 +83,10 @@ impl<U: UartDev> Rx<U> {
 
     pub fn into_interrupt(
         self,
-        w: Producer<u8>,
-        r: Consumer<u8>,
+        buf_size: usize,
         retry_times: u32,
     ) -> (UartInterruptRx<U>, UartInterruptRxHandler<U>) {
+        let (w, r) = RingBuffer::<u8>::new(buf_size);
         let [u1, u2] = self.uart;
         (
             UartInterruptRx::new(u1, r, retry_times),

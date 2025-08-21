@@ -9,7 +9,7 @@ use cortex_m::asm;
 use cortex_m_rt::entry;
 use jw_stm32f1_hal as hal;
 use jw_stm32f1_hal::{
-    Heap, Mcu, RingBuffer, embedded_hal, embedded_io,
+    Heap, Mcu, embedded_hal, embedded_io,
     gpio::PinState,
     nvic_scb::PriorityGrouping,
     pac::{self, Interrupt},
@@ -119,10 +119,8 @@ fn uart_interrupt_init<U: UartDev + 'static>(
     callback_handle: &hal::interrupt::Callback,
 ) -> UartPollTask<impl embedded_io::Write + use<U>, impl embedded_io::Read + use<U>> {
     mcu.nvic.enable(it_line, false);
-    let (w, r) = RingBuffer::<u8>::new(64);
-    let (tx, mut tx_it) = tx.into_interrupt(w, r, 0, 10_000);
-    let (w, r) = RingBuffer::<u8>::new(64);
-    let (rx, mut rx_it) = rx.into_interrupt(w, r, 0);
+    let (tx, mut tx_it) = tx.into_interrupt(64, 0, 10_000);
+    let (rx, mut rx_it) = rx.into_interrupt(64, 0);
     callback_handle.set(mcu, move || {
         rx_it.handler();
         tx_it.handler();

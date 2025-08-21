@@ -19,29 +19,29 @@ impl<T: Copy> ProducerExt<T> for Producer<T> {
     }
 
     fn push_slice(&mut self, buf: &[T]) -> Option<usize> {
-        let n = self.slots();
-        if n > 0 {
-            let mut chunk = self.write_chunk_uninit(n).unwrap();
+        let mut size = self.slots();
+        if size > 0 {
+            let buf = if size >= buf.len() {
+                size = buf.len();
+                buf
+            } else {
+                &buf[..size]
+            };
+
+            let mut chunk = self.write_chunk_uninit(size).unwrap();
             let (c1, c2) = chunk.get_mut_slices();
 
-            if c1.len() == 0 {
-                return None;
-            }
-
-            let n = if c1.len() >= buf.len() {
-                c1[..buf.len()].copy_from_slice(buf);
-                buf.len()
+            if c1.len() == size {
+                c1.copy_from_slice(buf);
             } else {
                 let (b1, b2) = buf.split_at(c1.len());
                 c1.copy_from_slice(b1);
-                let min = b2.len().min(c2.len());
-                c2[..min].copy_from_slice(&b2[..min]);
-                c1.len() + min
+                c2.copy_from_slice(b2);
             };
             unsafe {
-                chunk.commit(n);
+                chunk.commit_all();
             }
-            Some(n)
+            Some(size)
         } else {
             None
         }
@@ -53,6 +53,7 @@ pub trait WriteChunkExt<T> {
     fn get_mut_slices(&mut self) -> (&mut [T], &mut [T]);
 }
 impl<T: Copy> WriteChunkExt<T> for WriteChunkUninit<'_, T> {
+    #[inline]
     fn get_mut_slice(&mut self) -> &mut [T] {
         let (buf, _) = self.as_mut_slices();
         unsafe {
@@ -61,6 +62,7 @@ impl<T: Copy> WriteChunkExt<T> for WriteChunkUninit<'_, T> {
         }
     }
 
+    #[inline]
     fn get_mut_slices(&mut self) -> (&mut [T], &mut [T]) {
         let (a, b) = self.as_mut_slices();
         unsafe {
@@ -88,22 +90,27 @@ impl<T: Copy> ConsumerExt<T> for Consumer<T> {
     }
 
     fn pop_slice(&mut self, buf: &mut [T]) -> Option<usize> {
-        let n = self.slots();
-        if n > 0 {
-            let chunk = self.read_chunk(n).unwrap();
+        let mut size = self.slots();
+        if size > 0 {
+            let buf = if size >= buf.len() {
+                size = buf.len();
+                buf
+            } else {
+                &mut buf[..size]
+            };
+
+            let chunk = self.read_chunk(size).unwrap();
             let (c1, c2) = chunk.as_slices();
-            let n = if c1.len() >= buf.len() {
-                buf.copy_from_slice(&c1[..buf.len()]);
-                buf.len()
+
+            if c1.len() == size {
+                buf.copy_from_slice(c1);
             } else {
                 let (b1, b2) = buf.split_at_mut(c1.len());
                 b1.copy_from_slice(c1);
-                let min = b2.len().min(c2.len());
-                b2[..min].copy_from_slice(&c2[..min]);
-                c1.len() + min
+                b2.copy_from_slice(c2);
             };
-            chunk.commit(n);
-            Some(n)
+            chunk.commit_all();
+            Some(size)
         } else {
             None
         }
@@ -114,6 +121,7 @@ pub trait ReadChunkExt<T> {
     fn get_slice(&self) -> &[T];
 }
 impl<T: Copy> ReadChunkExt<T> for ReadChunk<'_, T> {
+    #[inline]
     fn get_slice(&self) -> &[T] {
         let (buf, _) = self.as_slices();
         buf

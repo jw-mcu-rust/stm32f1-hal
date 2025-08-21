@@ -6,7 +6,6 @@
     version = "0.1.0"
 
 [dependencies]
-    embedded-alloc = "0.6"
     [dependencies.jw-stm32f1-hal]
         features = ["stm32f103", "x8", "critical-section-single-core"]
         path = "../.."

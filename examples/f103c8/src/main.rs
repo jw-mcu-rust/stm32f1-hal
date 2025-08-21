@@ -7,10 +7,9 @@
 use core::{mem::MaybeUninit, panic::PanicInfo};
 use cortex_m::asm;
 use cortex_m_rt::entry;
-use embedded_alloc::LlffHeap as Heap;
 use jw_stm32f1_hal as hal;
 use jw_stm32f1_hal::{
-    Mcu, RingBuffer, embedded_hal, embedded_io,
+    Heap, Mcu, RingBuffer, embedded_hal, embedded_io,
     gpio::PinState,
     nvic_scb::PriorityGrouping,
     pac::{self, Interrupt},

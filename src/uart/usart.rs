@@ -53,6 +53,12 @@ impl<T: Instance> UartDev for Uart<T> {
     fn read(&mut self) -> nb::Result<u16, Error> {
         let sr = self.periph.sr().read();
 
+        // Check if a byte is available
+        if sr.rxne().bit_is_set() {
+            // Read the received byte
+            return Ok(self.periph.dr().read().dr().bits());
+        }
+
         // Check for any errors
         let err = if sr.pe().bit_is_set() {
             Some(Error::Parity)
@@ -70,13 +76,7 @@ impl<T: Instance> UartDev for Uart<T> {
             self.clear_err_flag();
             Err(nb::Error::Other(err))
         } else {
-            // Check if a byte is available
-            if sr.rxne().bit_is_set() {
-                // Read the received byte
-                Ok(self.periph.dr().read().dr().bits())
-            } else {
-                Err(nb::Error::WouldBlock)
-            }
+            Err(nb::Error::WouldBlock)
         }
     }
 
@@ -115,23 +115,30 @@ impl<T: Instance> UartDev for Uart<T> {
         }
     }
 
+    #[inline]
     fn is_interrupted(&mut self, event: UartEvent) -> bool {
         let sr = self.periph.sr().read();
-        let cr1 = self.periph.cr1().read();
         match event {
             UartEvent::Idle => {
-                if sr.idle().bit_is_set() && cr1.idleie().bit_is_set() {
+                if sr.idle().bit_is_set() && self.periph.cr1().read().idleie().bit_is_set() {
                     self.clear_err_flag();
-                    true
-                } else {
-                    false
+                    return true;
                 }
             }
             UartEvent::RxNotEmpty => {
-                (sr.rxne().bit_is_set() || sr.ore().bit_is_set()) && cr1.rxneie().bit_is_set()
+                if (sr.rxne().bit_is_set() || sr.ore().bit_is_set())
+                    && self.periph.cr1().read().rxneie().bit_is_set()
+                {
+                    return true;
+                }
             }
-            UartEvent::TxEmpty => sr.txe().bit_is_set() && cr1.txeie().bit_is_set(),
+            UartEvent::TxEmpty => {
+                if sr.txe().bit_is_set() && self.periph.cr1().read().txeie().bit_is_set() {
+                    return true;
+                }
+            }
         }
+        false
     }
 
     /// In order to clear that error flag, you have to do a read from the sr register

@@ -170,8 +170,7 @@ where
 pub struct UartInterruptRxHandler<U> {
     uart: U,
     w: Producer<u8>,
-    e_count: u32,
-    rbe_count: u32,
+    // count: [u32; 10],
 }
 
 impl<U> UartInterruptRxHandler<U>
@@ -183,23 +182,29 @@ where
         Self {
             uart,
             w,
-            e_count: 0,
-            rbe_count: 0,
+            // count: [0; 10],
         }
     }
-}
 
-impl<U> UartInterruptRxHandler<U>
-where
-    U: UartDev,
-{
     pub fn handler(&mut self) {
         if let Ok(data) = self.uart.read() {
-            if self.w.push(data as u8).is_err() {
-                self.rbe_count = self.rbe_count.wrapping_add(1);
-            }
-        } else {
-            self.e_count = self.e_count.wrapping_add(1);
+            self.w.push(data as u8).ok();
         }
+
+        // match self.uart.read() {
+        //     Ok(data) => match self.w.push(data as u8) {
+        //         Ok(()) => self.count[0] = self.count[0].saturating_add(1),
+        //         Err(_) => self.count[1] = self.count[1].saturating_add(1),
+        //     },
+        //     Err(nb::Error::WouldBlock) => self.count[2] = self.count[2].saturating_add(1),
+        //     Err(nb::Error::Other(e)) => match e {
+        //         Error::Overrun => self.count[3] = self.count[3].saturating_add(1),
+        //         Error::Other => self.count[4] = self.count[4].saturating_add(1),
+        //         Error::Noise => self.count[5] = self.count[5].saturating_add(1),
+        //         Error::FrameFormat => self.count[6] = self.count[6].saturating_add(1),
+        //         Error::Parity => self.count[7] = self.count[7].saturating_add(1),
+        //         Error::Busy => self.count[8] = self.count[8].saturating_add(1),
+        //     },
+        // }
     }
 }

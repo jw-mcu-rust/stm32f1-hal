@@ -120,9 +120,9 @@ fn uart_interrupt_init<U: UartDev + 'static>(
     callback_handle: &hal::interrupt::Callback,
 ) -> UartPollTask<impl embedded_io::Write + use<U>, impl embedded_io::Read + use<U>> {
     mcu.nvic.enable(it_line, false);
-    let (w, r) = RingBuffer::<u8>::new(128);
+    let (w, r) = RingBuffer::<u8>::new(64);
     let (tx, mut tx_it) = tx.into_interrupt(w, r, 0, 10_000);
-    let (w, r) = RingBuffer::<u8>::new(128);
+    let (w, r) = RingBuffer::<u8>::new(64);
     let (rx, mut rx_it) = rx.into_interrupt(w, r, 0);
     callback_handle.set(mcu, move || {
         rx_it.handler();

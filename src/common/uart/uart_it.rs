@@ -44,10 +44,7 @@ impl<U: UartDev> Write for UartInterruptTx<U> {
         }
 
         for _ in 0..=self.transmit_retry_times {
-            let free_len = self.w.slots();
-            if free_len > 0 {
-                let chunk = self.w.write_chunk_uninit(free_len).unwrap();
-                let n = chunk.copy_from_slice(buf);
+            if let Some(n) = self.w.push_slice(buf) {
                 self.uart.set_interrupt(UartEvent::TxEmpty, true);
                 return Ok(n);
             } else if !self.uart.is_interrupt_enable(UartEvent::TxEmpty) {
@@ -74,8 +71,7 @@ impl<U: UartDev> Write for UartInterruptTx<U> {
                     retry += 1;
                     if retry > self.flush_retry_times {
                         return Err(Error::Other);
-                    }
-                    if !self.uart.is_interrupt_enable(UartEvent::TxEmpty) {
+                    } else if !self.uart.is_interrupt_enable(UartEvent::TxEmpty) {
                         self.uart.set_interrupt(UartEvent::TxEmpty, true);
                     }
                 }
@@ -106,8 +102,8 @@ where
     U: UartDev,
 {
     pub fn handler(&mut self) {
-        if let Ok(d) = self.r.peek() {
-            if self.uart.write(*d as u16).is_ok() {
+        if let Ok(data) = self.r.peek() {
+            if self.uart.write(*data as u16).is_ok() {
                 self.r.pop().ok();
             }
         } else if self.uart.is_interrupt_enable(UartEvent::TxEmpty) {
@@ -151,12 +147,9 @@ where
         }
 
         for _ in 0..=self.retry_times {
-            let n = self.r.slots();
-            if n > 0 {
-                let chunk = self.r.read_chunk(n).unwrap();
-                return Ok(chunk.copy_to_slice(buf));
-            }
-            if !self.uart.is_interrupt_enable(UartEvent::RxNotEmpty) {
+            if let Some(n) = self.r.pop_slice(buf) {
+                return Ok(n);
+            } else if !self.uart.is_interrupt_enable(UartEvent::RxNotEmpty) {
                 self.uart.set_interrupt(UartEvent::RxNotEmpty, true);
             }
             os::yield_cpu();

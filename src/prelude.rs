@@ -16,6 +16,10 @@ pub use crate::timer::TimerExt as _stm32_hal_timer_TimerExt;
 // pub use crate::timer::pwm_input::QeiExt as _;
 pub use crate::nvic_scb::NvicInit as _;
 pub use crate::nvic_scb::ScbInit as _;
+pub use crate::ringbuf::ConsumerExt;
+pub use crate::ringbuf::ProducerExt;
+pub use crate::ringbuf::ReadChunkExt;
+pub use crate::ringbuf::WriteChunkExt;
 #[cfg(any(all(feature = "stm32f103", feature = "high"), feature = "connectivity"))]
 pub use crate::uart::uart::UartInit as _;
 pub use crate::uart::usart::UartInit as _;

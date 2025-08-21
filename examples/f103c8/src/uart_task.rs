@@ -1,11 +1,11 @@
 use crate::embedded_io::{Read, Write};
+use crate::hal::ringbuf::*;
 
 pub struct UartPollTask<W: Write, R: Read> {
     tx: W,
     rx: R,
-    buf: [u8; 32],
-    tx_i: usize,
-    rx_i: usize,
+    w: Producer<u8>,
+    r: Consumer<u8>,
 }
 
 impl<W, R> UartPollTask<W, R>
@@ -13,34 +13,22 @@ where
     W: Write,
     R: Read,
 {
-    pub fn new(tx: W, rx: R) -> Self {
-        Self {
-            tx,
-            rx,
-            buf: [0; 32],
-            tx_i: 0,
-            rx_i: 0,
-        }
+    pub fn new(size: usize, tx: W, rx: R) -> Self {
+        let (w, r) = RingBuffer::new(size);
+        Self { tx, rx, w, r }
     }
 
     pub fn poll(&mut self) {
-        if self.rx_i < 30 {
-            if let Ok(size) = self.rx.read(&mut self.buf[self.rx_i..]) {
-                self.rx_i += size;
+        if let Some(mut chunk) = self.w.get_write_chunk_uninit() {
+            if let Ok(size) = self.rx.read(chunk.get_mut_slice()) {
+                unsafe { chunk.commit(size) }
             }
         }
 
-        // loopback
-        if self.rx_i > self.tx_i
-            && let Ok(size) = self.tx.write(&self.buf[self.tx_i..self.rx_i])
-        {
-            self.tx_i += size;
-        }
-
-        if self.rx_i > 10 && self.rx_i == self.tx_i {
-            self.rx_i = 0;
-            self.tx_i = 0;
-            self.tx.flush().unwrap();
+        if let Some(chunk) = self.r.get_read_chunk() {
+            if let Ok(size) = self.tx.write(chunk.get_slice()) {
+                chunk.commit(size);
+            }
         }
     }
 }

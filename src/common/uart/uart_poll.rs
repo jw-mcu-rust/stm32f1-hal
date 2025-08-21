@@ -52,7 +52,7 @@ impl<U: UartDev> e_nb::serial::Write<u16> for UartPollTx<U> {
 impl<U: UartDev> e_io::Write for UartPollTx<U> {
     fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
         if buf.len() == 0 {
-            return Ok(0);
+            return Err(Error::Other);
         }
 
         // try first data
@@ -131,7 +131,7 @@ impl<U: UartDev> e_nb::serial::Read<u16> for UartPollRx<U> {
 impl<U: UartDev> e_io::Read for UartPollRx<U> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
         if buf.len() == 0 {
-            return Ok(0);
+            return Err(Error::Other);
         }
 
         // try first data

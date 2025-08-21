@@ -1,6 +1,6 @@
+use crate::ringbuf::{Consumer, Producer};
 use embedded_hal_nb as e_nb;
 use embedded_io as e_io;
-use ringbuf::traits::{Consumer, Producer};
 
 mod uart_it;
 mod uart_poll;
@@ -35,13 +35,13 @@ impl<U: UartDev> Tx<U> {
         UartPollTx::<U>::new(uart, retry_times, flush_retry_times)
     }
 
-    pub fn into_interrupt<W: Producer, R: Consumer>(
+    pub fn into_interrupt(
         self,
-        w: W,
-        r: R,
+        w: Producer<u8>,
+        r: Consumer<u8>,
         transmit_retry_times: u32,
         flush_retry_times: u32,
-    ) -> (UartInterruptTx<U, W>, UartInterruptTxHandler<U, R>) {
+    ) -> (UartInterruptTx<U>, UartInterruptTxHandler<U>) {
         let [u1, u2] = self.uart;
         (
             UartInterruptTx::new(u1, w, transmit_retry_times, flush_retry_times),
@@ -81,12 +81,12 @@ impl<U: UartDev> Rx<U> {
         UartPollRx::<U>::new(uart, retry_times, continue_retry_times)
     }
 
-    pub fn into_interrupt<W: Producer, R: Consumer>(
+    pub fn into_interrupt(
         self,
-        w: W,
-        r: R,
+        w: Producer<u8>,
+        r: Consumer<u8>,
         retry_times: u32,
-    ) -> (UartInterruptRx<U, R>, UartInterruptRxHandler<U, W>) {
+    ) -> (UartInterruptRx<U>, UartInterruptRxHandler<U>) {
         let [u1, u2] = self.uart;
         (
             UartInterruptRx::new(u1, r, retry_times),

@@ -10,14 +10,12 @@ use cortex_m_rt::entry;
 use embedded_alloc::LlffHeap as Heap;
 use jw_stm32f1_hal as hal;
 use jw_stm32f1_hal::{
-    Mcu, embedded_hal, embedded_io,
+    Mcu, RingBuffer, embedded_hal, embedded_io,
     gpio::PinState,
     nvic_scb::PriorityGrouping,
     pac::{self, Interrupt},
     prelude::*,
     rcc,
-    ringbuf::{StaticRb, traits::*},
-    static_ringbuf_init,
     timer::Timer,
     uart::{self, UartDev},
 };
@@ -29,7 +27,7 @@ use uart_task::UartPollTask;
 
 #[global_allocator]
 static HEAP: Heap = Heap::empty();
-const HEAP_SIZE: usize = 15 * 1024;
+const HEAP_SIZE: usize = 10 * 1024;
 static mut HEAP_MEM: [MaybeUninit<u8>; HEAP_SIZE] = [MaybeUninit::uninit(); HEAP_SIZE];
 
 #[entry]
@@ -60,7 +58,7 @@ fn main() -> ! {
     };
 
     // Keep them in one place for easier management
-    mcu.nvic.set_priority(Interrupt::USART1, 10);
+    mcu.nvic.set_priority(Interrupt::USART1, 1);
 
     // UART ---------------------------------------
 
@@ -111,7 +109,7 @@ fn uart_poll_init<U: UartDev>(
     rx: uart::Rx<U>,
 ) -> UartPollTask<impl embedded_io::Write, impl embedded_io::Read> {
     let (uart_tx, uart_rx) = (tx.into_poll(0, 10_000), rx.into_poll(0, 1_000));
-    UartPollTask::new(uart_tx, uart_rx)
+    UartPollTask::new(32, uart_tx, uart_rx)
 }
 
 fn uart_interrupt_init<U: UartDev + 'static>(
@@ -122,15 +120,15 @@ fn uart_interrupt_init<U: UartDev + 'static>(
     callback_handle: &hal::interrupt::Callback,
 ) -> UartPollTask<impl embedded_io::Write + use<U>, impl embedded_io::Read + use<U>> {
     mcu.nvic.enable(it_line, false);
-    let (w, r) = static_ringbuf_init!(u8, 64).split_ref();
+    let (w, r) = RingBuffer::<u8>::new(128);
     let (tx, mut tx_it) = tx.into_interrupt(w, r, 0, 10_000);
-    let (w, r) = static_ringbuf_init!(u8, 64).split_ref();
+    let (w, r) = RingBuffer::<u8>::new(128);
     let (rx, mut rx_it) = rx.into_interrupt(w, r, 0);
     callback_handle.set(mcu, move || {
         rx_it.handler();
         tx_it.handler();
     });
-    UartPollTask::new(tx, rx)
+    UartPollTask::new(32, tx, rx)
 }
 
 mod all_it {

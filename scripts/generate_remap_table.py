@@ -41,7 +41,11 @@ def match_filter(filter: str, name: str) -> bool:
     return name.startswith(filter)
 
 
-REG_TEMPLATE = """impl RemapMode for {mode}<{peri}> {{
+def func_pin_name(filter: str, func: str) -> str:
+    return filter[0] + filter[1:].lower() + func[0] + func[1:].lower() + "Pin"
+
+
+REG_TEMPLATE = """impl RemapMode<{peri}> for {mode}<{peri}> {{
     fn remap(afio: &mut Afio) {{
         {op}
     }}
@@ -59,6 +63,9 @@ def write_reg_operation(d: dict, filter: str, w: Write) -> None:
                 bits: str = mode_info["bits"]
                 if reg == "none":
                     op = ""
+                elif peri == "TIM5":
+                    b = "set_bit" if bits[2] == "1" else "clear_bit"
+                    op = f"afio.{reg}.modify_mapr(|_, w| w.{peri.lower()}ch4_iremap().{b}());"
                 elif len(bits) == 3:
                     b = "set_bit" if bits[2] == "1" else "clear_bit"
                     op = f"afio.{reg}.modify_mapr(|_, w| w.{peri.lower()}_remap().{b}());"
@@ -81,27 +88,36 @@ def write_binder_type(d: dict, filter: str, w: Write) -> None:
 
     func_list = sorted(list(set(func_list)))
     for func in func_list:
-        name = filter[0] + filter[1:].lower() + func[0] + func[1:].lower()
-        w.write(f"pub trait {name}Pin<PERI> {{type RemapMode;}}")
+        name = func_pin_name(filter, func)
+        w.write(f"pub trait {name}<REMAP> {{}}")
     w.write("\n")
 
 
-UART_IMPL_TEMPLATE_DICT = {
-    "TX": "impl UartTxPin<{peri}> for {pin}<Alternate<PushPull>> {{",
-    "RX": "impl<PULL: UpMode> UartRxPin<{peri}> for {pin}<Input<PULL>> {{",
-}
-UART_TEMPLATE = """
-    type RemapMode = {mode}<{peri}>;
-}}
-"""
+IMPL_TEMPLATE_LIST = [
+    (
+        ["TX", "CK", "CH1", "CH2", "CH3", "CH4"],
+        "impl {func}<{mode}<{peri}>> for {pin}<Alternate<PushPull>>",
+    ),
+    (["RX"], "impl<PULL: UpMode> {func}<{mode}<{peri}>> for {pin}<Input<PULL>>"),
+]
 
 
-def write_uart_item(peri: str, mode: str, pins: dict[str, str], w: Write) -> None:
+def get_impl_template(func: str) -> str:
+    for item in IMPL_TEMPLATE_LIST:
+        if func in item[0]:
+            return item[1]
+    return ""
+
+
+def write_item(filter: str, peri: str, mode: str, pins: dict[str, str], w: Write) -> None:
     for pin_func, pin in sorted(pins.items()):
-        impl = UART_IMPL_TEMPLATE_DICT.get(pin_func, "")
+        impl = get_impl_template(pin_func)
         if impl:
-            w.write(impl.format(peri=peri, pin=pin))
-            w.write(UART_TEMPLATE.format(mode=mode, peri=peri))
+            if pin.startswith("PF"):
+                w.write('#[cfg(feature = "high")]\n')
+            func = func_pin_name(filter, pin_func)
+            w.write(impl.format(func=func, mode=mode, peri=peri, pin=pin))
+            w.write("{}")
 
 
 def write_table(d: dict, filter: str, csv_file: str, target_file: str) -> None:
@@ -124,7 +140,7 @@ def write_table(d: dict, filter: str, csv_file: str, target_file: str) -> None:
         if match_filter(filter, peri):
             for mode_name, mode_info in sorted(remap_modes.items()):
                 mode = REMAP_MODES[mode_name]
-                write_uart_item(peri, mode, mode_info["pins"], w)
+                write_item(filter, peri, mode, mode_info["pins"], w)
     w.close()
     subprocess.run(["rustfmt", target_file])
 
@@ -138,7 +154,12 @@ def parse_remap_info(row: list[str], ret_d: dict) -> None:
     for pin in row[4:]:
         if pin:
             (func, pin) = pin.split(":")
-            pins[func] = pin
+            if "/" in func:
+                (f1, f2) = func.split("/")
+                pins[f1] = pin
+                pins[f2] = pin
+            else:
+                pins[func] = pin
 
     p = ret_d.setdefault(peripheral, {})
     p[remap_mode] = {
@@ -161,8 +182,7 @@ def csv_to_code(csv_file: str, show: bool = False) -> None:
         pprint.pprint(d)
 
     write_table(d, "UART", csv_file, "src/afio/uart_remap.rs")
-    # write_menu(d, csv_file, prefix, menu_file)
-    # write_table(d, csv_file, prefix, table_file)
+    write_table(d, "TIM", csv_file, "src/afio/timer_remap.rs")
 
 
 if __name__ == "__main__":

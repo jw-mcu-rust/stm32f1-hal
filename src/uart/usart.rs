@@ -190,12 +190,9 @@ impl<U: Instance + Steal> Uart<U> {
         }
     }
 
-    pub fn into_tx_rx<REMAP: RemapMode>(
+    pub fn into_tx_rx<REMAP: RemapMode<U>>(
         mut self,
-        pins: (
-            impl UartTxPin<U, RemapMode = REMAP>,
-            impl UartRxPin<U, RemapMode = REMAP>,
-        ),
+        pins: (impl UartTxPin<REMAP>, impl UartRxPin<REMAP>),
         config: Config,
         mcu: &mut Mcu,
     ) -> (Tx<Self>, Rx<Self>) {
@@ -208,9 +205,9 @@ impl<U: Instance + Steal> Uart<U> {
         )
     }
 
-    pub fn into_tx<REMAP: RemapMode>(
+    pub fn into_tx<REMAP: RemapMode<U>>(
         mut self,
-        tx_pin: impl UartTxPin<U, RemapMode = REMAP>,
+        tx_pin: impl UartTxPin<REMAP>,
         config: Config,
         mcu: &mut Mcu,
     ) -> Tx<Self> {
@@ -220,9 +217,9 @@ impl<U: Instance + Steal> Uart<U> {
         Tx::new([self.steal(), self.steal()])
     }
 
-    pub fn into_rx<REMAP: RemapMode>(
+    pub fn into_rx<REMAP: RemapMode<U>>(
         mut self,
-        rx_pin: impl UartRxPin<U, RemapMode = REMAP>,
+        rx_pin: impl UartRxPin<REMAP>,
         config: Config,
         mcu: &mut Mcu,
     ) -> Rx<Self> {

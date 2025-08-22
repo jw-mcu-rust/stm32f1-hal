@@ -1,5 +1,6 @@
 //! # Alternate Function I/Os
 
+pub mod timer_remap;
 pub mod uart_remap;
 
 use crate::gpio::{self, Alternate, Cr, Debugger, Floating, Input, OpenDrain, PushPull};
@@ -61,7 +62,7 @@ impl EVCR {
 }
 
 // Remap Mode
-pub trait RemapMode {
+pub trait RemapMode<PERIPH> {
     fn remap(afio: &mut Afio);
 }
 pub struct RemapDefault<PERIPH>(PhantomData<PERIPH>);

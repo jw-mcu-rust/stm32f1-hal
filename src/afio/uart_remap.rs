@@ -11,45 +11,45 @@ use crate::{
 
 // Register operation ------------
 
-impl RemapMode for RemapDefault<UART4> {
+impl RemapMode<UART4> for RemapDefault<UART4> {
     fn remap(afio: &mut Afio) {}
 }
-impl RemapMode for RemapDefault<UART5> {
+impl RemapMode<UART5> for RemapDefault<UART5> {
     fn remap(afio: &mut Afio) {}
 }
-impl RemapMode for RemapDefault<USART1> {
+impl RemapMode<USART1> for RemapDefault<USART1> {
     fn remap(afio: &mut Afio) {
         afio.mapr.modify_mapr(|_, w| w.usart1_remap().clear_bit());
     }
 }
-impl RemapMode for RemapFull<USART1> {
+impl RemapMode<USART1> for RemapFull<USART1> {
     fn remap(afio: &mut Afio) {
         afio.mapr.modify_mapr(|_, w| w.usart1_remap().set_bit());
     }
 }
-impl RemapMode for RemapDefault<USART2> {
+impl RemapMode<USART2> for RemapDefault<USART2> {
     fn remap(afio: &mut Afio) {
         afio.mapr.modify_mapr(|_, w| w.usart2_remap().clear_bit());
     }
 }
-impl RemapMode for RemapFull<USART2> {
+impl RemapMode<USART2> for RemapFull<USART2> {
     fn remap(afio: &mut Afio) {
         afio.mapr.modify_mapr(|_, w| w.usart2_remap().set_bit());
     }
 }
-impl RemapMode for RemapDefault<USART3> {
+impl RemapMode<USART3> for RemapDefault<USART3> {
     fn remap(afio: &mut Afio) {
         afio.mapr
             .modify_mapr(unsafe { |_, w| w.usart3_remap().bits(0b00) });
     }
 }
-impl RemapMode for RemapFull<USART3> {
+impl RemapMode<USART3> for RemapFull<USART3> {
     fn remap(afio: &mut Afio) {
         afio.mapr
             .modify_mapr(unsafe { |_, w| w.usart3_remap().bits(0b11) });
     }
 }
-impl RemapMode for RemapPart1<USART3> {
+impl RemapMode<USART3> for RemapPart1<USART3> {
     fn remap(afio: &mut Afio) {
         afio.mapr
             .modify_mapr(unsafe { |_, w| w.usart3_remap().bits(0b01) });
@@ -58,75 +58,34 @@ impl RemapMode for RemapPart1<USART3> {
 
 // Binder types ------------------
 
-pub trait UartCkPin<PERI> {
-    type RemapMode;
-}
-pub trait UartCtsPin<PERI> {
-    type RemapMode;
-}
-pub trait UartRtsPin<PERI> {
-    type RemapMode;
-}
-pub trait UartRxPin<PERI> {
-    type RemapMode;
-}
-pub trait UartTxPin<PERI> {
-    type RemapMode;
-}
+pub trait UartCkPin<REMAP> {}
+pub trait UartCtsPin<REMAP> {}
+pub trait UartRtsPin<REMAP> {}
+pub trait UartRxPin<REMAP> {}
+pub trait UartTxPin<REMAP> {}
 
 // Bind pins ---------------------
 
-impl<PULL: UpMode> UartRxPin<UART4> for PC11<Input<PULL>> {
-    type RemapMode = RemapDefault<UART4>;
-}
-impl UartTxPin<UART4> for PC10<Alternate<PushPull>> {
-    type RemapMode = RemapDefault<UART4>;
-}
-impl<PULL: UpMode> UartRxPin<UART5> for PD2<Input<PULL>> {
-    type RemapMode = RemapDefault<UART5>;
-}
-impl UartTxPin<UART5> for PC12<Alternate<PushPull>> {
-    type RemapMode = RemapDefault<UART5>;
-}
-impl<PULL: UpMode> UartRxPin<USART1> for PA10<Input<PULL>> {
-    type RemapMode = RemapDefault<USART1>;
-}
-impl UartTxPin<USART1> for PA9<Alternate<PushPull>> {
-    type RemapMode = RemapDefault<USART1>;
-}
-impl<PULL: UpMode> UartRxPin<USART1> for PB7<Input<PULL>> {
-    type RemapMode = RemapFull<USART1>;
-}
-impl UartTxPin<USART1> for PB6<Alternate<PushPull>> {
-    type RemapMode = RemapFull<USART1>;
-}
-impl<PULL: UpMode> UartRxPin<USART2> for PA3<Input<PULL>> {
-    type RemapMode = RemapDefault<USART2>;
-}
-impl UartTxPin<USART2> for PA2<Alternate<PushPull>> {
-    type RemapMode = RemapDefault<USART2>;
-}
-impl<PULL: UpMode> UartRxPin<USART2> for PD6<Input<PULL>> {
-    type RemapMode = RemapFull<USART2>;
-}
-impl UartTxPin<USART2> for PD5<Alternate<PushPull>> {
-    type RemapMode = RemapFull<USART2>;
-}
-impl<PULL: UpMode> UartRxPin<USART3> for PB11<Input<PULL>> {
-    type RemapMode = RemapDefault<USART3>;
-}
-impl UartTxPin<USART3> for PB10<Alternate<PushPull>> {
-    type RemapMode = RemapDefault<USART3>;
-}
-impl<PULL: UpMode> UartRxPin<USART3> for PD9<Input<PULL>> {
-    type RemapMode = RemapFull<USART3>;
-}
-impl UartTxPin<USART3> for PD8<Alternate<PushPull>> {
-    type RemapMode = RemapFull<USART3>;
-}
-impl<PULL: UpMode> UartRxPin<USART3> for PC11<Input<PULL>> {
-    type RemapMode = RemapPart1<USART3>;
-}
-impl UartTxPin<USART3> for PC10<Alternate<PushPull>> {
-    type RemapMode = RemapPart1<USART3>;
-}
+impl<PULL: UpMode> UartRxPin<RemapDefault<UART4>> for PC11<Input<PULL>> {}
+impl UartTxPin<RemapDefault<UART4>> for PC10<Alternate<PushPull>> {}
+impl<PULL: UpMode> UartRxPin<RemapDefault<UART5>> for PD2<Input<PULL>> {}
+impl UartTxPin<RemapDefault<UART5>> for PC12<Alternate<PushPull>> {}
+impl<PULL: UpMode> UartRxPin<RemapDefault<USART1>> for PA10<Input<PULL>> {}
+impl UartTxPin<RemapDefault<USART1>> for PA9<Alternate<PushPull>> {}
+impl<PULL: UpMode> UartRxPin<RemapFull<USART1>> for PB7<Input<PULL>> {}
+impl UartTxPin<RemapFull<USART1>> for PB6<Alternate<PushPull>> {}
+impl UartCkPin<RemapDefault<USART2>> for PA4<Alternate<PushPull>> {}
+impl<PULL: UpMode> UartRxPin<RemapDefault<USART2>> for PA3<Input<PULL>> {}
+impl UartTxPin<RemapDefault<USART2>> for PA2<Alternate<PushPull>> {}
+impl UartCkPin<RemapFull<USART2>> for PD7<Alternate<PushPull>> {}
+impl<PULL: UpMode> UartRxPin<RemapFull<USART2>> for PD6<Input<PULL>> {}
+impl UartTxPin<RemapFull<USART2>> for PD5<Alternate<PushPull>> {}
+impl UartCkPin<RemapDefault<USART3>> for PB12<Alternate<PushPull>> {}
+impl<PULL: UpMode> UartRxPin<RemapDefault<USART3>> for PB11<Input<PULL>> {}
+impl UartTxPin<RemapDefault<USART3>> for PB10<Alternate<PushPull>> {}
+impl UartCkPin<RemapFull<USART3>> for PD10<Alternate<PushPull>> {}
+impl<PULL: UpMode> UartRxPin<RemapFull<USART3>> for PD9<Input<PULL>> {}
+impl UartTxPin<RemapFull<USART3>> for PD8<Alternate<PushPull>> {}
+impl UartCkPin<RemapPart1<USART3>> for PC12<Alternate<PushPull>> {}
+impl<PULL: UpMode> UartRxPin<RemapPart1<USART3>> for PC11<Input<PULL>> {}
+impl UartTxPin<RemapPart1<USART3>> for PC10<Alternate<PushPull>> {}

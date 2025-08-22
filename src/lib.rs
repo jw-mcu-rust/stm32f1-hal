@@ -5,18 +5,17 @@ extern crate alloc;
 pub mod afio;
 pub mod backup_domain;
 pub mod bb;
+pub mod common;
 pub mod flash;
 pub mod gpio;
 pub mod interrupt;
 pub mod nvic_scb;
+pub mod os;
 pub mod prelude;
 pub mod rcc;
 pub mod time;
 pub mod timer;
 pub mod uart;
-
-mod common;
-mod os;
 
 pub use common::ringbuf;
 pub use common::simplest_heap::Heap;

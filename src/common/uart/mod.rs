@@ -130,7 +130,7 @@ impl<U: UartPeriph> UartIdleInterrupt<U> {
     }
 }
 
-// Device Trait --------------------------------------------------------------
+// Peripheral Trait -----------------------------------------------------------
 
 pub trait UartPeriph {
     fn set_dma_tx(&mut self, enable: bool);

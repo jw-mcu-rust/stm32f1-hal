@@ -44,9 +44,9 @@ impl UartTxPin<RemapDefault<USART3>> for PB10<Alternate<PushPull>> {}
 impl UartCkPin<RemapFull<USART3>> for PD10<Alternate<PushPull>> {}
 impl<PULL: UpMode> UartRxPin<RemapFull<USART3>> for PD9<Input<PULL>> {}
 impl UartTxPin<RemapFull<USART3>> for PD8<Alternate<PushPull>> {}
-impl UartCkPin<RemapPart1<USART3>> for PC12<Alternate<PushPull>> {}
-impl<PULL: UpMode> UartRxPin<RemapPart1<USART3>> for PC11<Input<PULL>> {}
-impl UartTxPin<RemapPart1<USART3>> for PC10<Alternate<PushPull>> {}
+impl UartCkPin<RemapPartial1<USART3>> for PC12<Alternate<PushPull>> {}
+impl<PULL: UpMode> UartRxPin<RemapPartial1<USART3>> for PC11<Input<PULL>> {}
+impl UartTxPin<RemapPartial1<USART3>> for PC10<Alternate<PushPull>> {}
 
 // Register operation ------------
 
@@ -88,7 +88,7 @@ impl RemapMode<USART3> for RemapFull<USART3> {
             .modify_mapr(unsafe { |_, w| w.usart3_remap().bits(0b11) });
     }
 }
-impl RemapMode<USART3> for RemapPart1<USART3> {
+impl RemapMode<USART3> for RemapPartial1<USART3> {
     fn remap(afio: &mut Afio) {
         afio.mapr
             .modify_mapr(unsafe { |_, w| w.usart3_remap().bits(0b01) });

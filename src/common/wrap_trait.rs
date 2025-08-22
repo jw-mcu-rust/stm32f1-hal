@@ -43,7 +43,7 @@ pub(crate) use impl_wrap_func_deref;
 
 macro_rules! impl_wrap_trait {
     (
-        $vis:vis trait $trait_name:ident {
+        $vis:vis trait $trait_name:ident $(: $($dep:ty)+)? {
             $($func:tt)*
         }
         $type:ty
@@ -57,7 +57,7 @@ pub(crate) use impl_wrap_trait;
 
 macro_rules! impl_wrap_trait_deref {
     (
-        $vis:vis trait $trait_name:ident {
+        $vis:vis trait $trait_name:ident $(: $($dep:ty)+)? {
             $($func:tt)*
         }
         $type:ty

@@ -9,14 +9,17 @@ use cortex_m::asm;
 use cortex_m_rt::entry;
 use jw_stm32f1_hal as hal;
 use jw_stm32f1_hal::{
-    Heap, Mcu, embedded_hal, embedded_io,
+    Heap, Mcu,
+    afio::{NONE_PIN, RemapDefault},
+    common::timer::*,
+    embedded_hal, embedded_io,
     gpio::PinState,
     nvic_scb::PriorityGrouping,
     pac::{self, Interrupt},
     prelude::*,
     rcc,
-    timer::Timer,
-    uart::{self, UartDev},
+    timer::{CountDirection, Timer},
+    uart::{self, UartPeriph},
 };
 
 mod led_task;
@@ -92,6 +95,27 @@ fn main() -> ! {
     let freq = 100.Hz();
     timer.start(freq).unwrap();
     let mut led_task = LedTask::new(led, freq.raw());
+
+    // PWM --------------------------------------
+
+    let c1 = gpioa.pa8.into_alternate_push_pull(&mut gpioa.crh);
+    let (mut bt, Some(mut ch1), _, _, _) = dp.TIM1.constrain().into_pwm::<RemapDefault<_>>(
+        (Some(c1), NONE_PIN, NONE_PIN, NONE_PIN),
+        CountDirection::Up,
+        true,
+        &mut mcu,
+    ) else {
+        panic!()
+    };
+    bt.config_freq(1.MHz(), 20.kHz());
+
+    ch1.config(
+        PwmMode::Mode1,
+        PwmPolarity::ActiveHigh,
+        bt.get_max_duty() / 2,
+    );
+
+    bt.start();
 
     loop {
         if timer.wait().is_ok() {

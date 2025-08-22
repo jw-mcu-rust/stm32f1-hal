@@ -18,7 +18,6 @@ use crate::{
 
 macro_rules! impl_uart_init {
     ($($reg:ty),+) => {$(
-        impl RegisterBlock for $reg {}
         impl UartInit<$reg> for $reg {
             fn constrain(self) -> Uart<$reg> {
                 Uart { reg: self }
@@ -26,6 +25,7 @@ macro_rules! impl_uart_init {
         }
     )+};
 }
+pub(crate) use impl_uart_init;
 
 pub trait UartInit<REG: RegisterBlock> {
     fn constrain(self) -> Uart<REG>;
@@ -107,8 +107,6 @@ impl<REG: RegisterBlock + Steal> Uart<REG> {
 }
 
 // Implement Peripheral -------------------------------------------------------
-
-pub trait RegisterBlock: RegisterBlockWrap + BusClock + Enable + Reset {}
 
 impl<REG: RegisterBlock> UartPeriph for Uart<REG> {
     #[inline]
@@ -265,7 +263,7 @@ impl<REG: RegisterBlock> Uart<REG> {
 impl_uart_init!(pac::UART4, pac::UART5);
 wrap_trait_deref!(
     (pac::UART4, pac::UART5,),
-    pub trait RegisterBlockWrap {
+    pub trait RegisterBlock: BusClock + Enable + Reset {
         fn cr1(&self) -> &uart4::CR1;
         fn dr(&self) -> &uart4::DR;
         fn brr(&self) -> &uart4::BRR;

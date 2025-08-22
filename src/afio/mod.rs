@@ -66,8 +66,8 @@ pub trait RemapMode<REG> {
     fn remap(afio: &mut Afio);
 }
 pub struct RemapDefault<REG>(PhantomData<REG>);
-pub struct RemapPart1<REG>(PhantomData<REG>);
-pub struct RemapPart2<REG>(PhantomData<REG>);
+pub struct RemapPartial1<REG>(PhantomData<REG>);
+pub struct RemapPartial2<REG>(PhantomData<REG>);
 pub struct RemapFull<REG>(PhantomData<REG>);
 pub struct NonePin {}
 pub const NONE_PIN: Option<NonePin> = None::<NonePin>;

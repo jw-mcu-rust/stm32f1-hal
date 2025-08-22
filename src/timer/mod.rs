@@ -1,52 +1,6 @@
-/*!
-  # Timer
-
-  ## Alternate function remapping
-
-  This is a list of the remap settings you can use to assign pins to PWM channels
-  and the QEI peripherals
-
-  ### TIM1
-
-  Not available on STM32F101.
-
-  | Channel | Tim1NoRemap | Tim1FullRemap |
-  |:---:|:-----------:|:-------------:|
-  | CH1 |     PA8     |       PE9     |
-  | CH2 |     PA9     |       PE11    |
-  | CH3 |     PA10    |       PE13    |
-  | CH4 |     PA11    |       PE14    |
-
-  ### TIM2
-
-  | Channel | Tim2NoRemap | Tim2PartialRemap1 | Tim2PartialRemap2 | Tim2FullRemap |
-  |:---:|:-----------:|:-----------------:|:-----------------:|:-------------:|
-  | CH1 |     PA0     |        PA15       |        PA0        |      PA15     |
-  | CH2 |     PA1     |        PB3        |        PA1        |      PB3      |
-  | CH3 |     PA2     |        PA2        |        PB10       |      PB10     |
-  | CH4 |     PA3     |        PA3        |        PB11       |      PB11     |
-
-  ### TIM3
-
-  | Channel | Tim3NoRemap | Tim3PartialRemap | Tim3FullRemap |
-  |:---:|:-----------:|:----------------:|:-------------:|
-  | CH1 |     PA6     |        PB4       |      PC6      |
-  | CH2 |     PA7     |        PB5       |      PC7      |
-  | CH3 |     PB0     |        PB0       |      PC8      |
-  | CH4 |     PB1     |        PB1       |      PC9      |
-
-  ### TIM4
-
-  Not available on low density devices.
-
-  | Channel | Tim4NoRemap | Tim4Remap |
-  |:---:|:-----------:|:---------:|
-  | CH1 |     PB6     |    PD12   |
-  | CH2 |     PB7     |    PD13   |
-  | CH3 |     PB8     |    PD14   |
-  | CH4 |     PB9     |    PD15   |
-*/
 #![allow(non_upper_case_globals)]
+
+pub mod timer_1_8;
 
 use crate::bb;
 use crate::pac::{self, DBGMCU as DBG};
@@ -62,15 +16,11 @@ use crate::time::Hertz;
 pub mod monotonic;
 #[cfg(feature = "rtic")]
 pub use monotonic::*;
-pub(crate) mod pins;
-// pub mod pwm_input;
-pub use pins::*;
 pub mod delay;
+pub mod pwm;
 pub use delay::*;
 pub mod counter;
 pub use counter::*;
-pub mod pwm;
-pub use pwm::*;
 
 mod impl_hal;
 
@@ -87,6 +37,23 @@ pub enum Channel {
     C2 = 1,
     C3 = 2,
     C4 = 3,
+}
+
+impl From<u8> for Channel {
+    fn from(value: u8) -> Self {
+        match value {
+            3 => Channel::C4,
+            2 => Channel::C3,
+            1 => Channel::C2,
+            _ => Channel::C1,
+        }
+    }
+}
+
+impl From<Channel> for u8 {
+    fn from(value: Channel) -> Self {
+        value as u8
+    }
 }
 
 /// Interrupt events
@@ -111,6 +78,12 @@ pub enum Error {
     /// Timer is disabled
     Disabled,
     WrongAutoReload,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CountDirection {
+    Up,
+    Down,
 }
 
 pub trait TimerExt: Sized {

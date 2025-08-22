@@ -8,11 +8,16 @@ DRY_RUN = False
 SCRIPT = os.path.relpath(__file__, os.getcwd()).replace("\\", "/")
 REMAP_MODES = {
     "DEFAULT": "RemapDefault",
-    "PARTIAL_REMAP": "RemapPart1",
-    "PARTIAL_REMAP1": "RemapPart1",
-    "PARTIAL_REMAP2": "RemapPart2",
+    "PARTIAL_REMAP": "RemapPartial1",
+    "PARTIAL_REMAP1": "RemapPartial1",
+    "PARTIAL_REMAP2": "RemapPartial2",
     "FULL_REMAP": "RemapFull",
     "REMAP": "RemapFull",
+}
+
+CFG_TABLE = {
+    "TIM4": '#[cfg(feature = "medium")]',
+    "TIM1": '#[cfg(any(feature = "stm32f100", feature = "stm32f103", feature = "connectivity"))]',
 }
 
 
@@ -114,8 +119,10 @@ def write_item(filter: str, peri: str, mode: str, pins: dict[str, str], w: Write
     for pin_func, pin in sorted(pins.items()):
         impl = get_impl_template(pin_func)
         if impl:
-            if pin.startswith("PF"):
-                w.write('#[cfg(feature = "high")]\n')
+            if pin.startswith("PF") or pin.startswith("PG"):
+                w.write('#[cfg(any(feature = "xl", feature = "high"))]\n')
+            else:
+                w.write(CFG_TABLE.get(peri, ""))
             func = func_pin_name(filter, pin_func)
             w.write(impl.format(func=func, mode=mode, peri=peri, pin=pin))
             w.write("{}")

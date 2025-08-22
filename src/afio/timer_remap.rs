@@ -29,31 +29,43 @@ impl<T> TimEtrPin<T> for NonePin {}
 
 // Bind pins ---------------------
 
+#[cfg(any(feature = "stm32f100", feature = "stm32f103", feature = "connectivity"))]
 impl TimCh1Pin<RemapDefault<TIM1>> for PA8<Alternate<PushPull>> {}
+#[cfg(any(feature = "stm32f100", feature = "stm32f103", feature = "connectivity"))]
 impl TimCh2Pin<RemapDefault<TIM1>> for PA9<Alternate<PushPull>> {}
+#[cfg(any(feature = "stm32f100", feature = "stm32f103", feature = "connectivity"))]
 impl TimCh3Pin<RemapDefault<TIM1>> for PA10<Alternate<PushPull>> {}
+#[cfg(any(feature = "stm32f100", feature = "stm32f103", feature = "connectivity"))]
 impl TimCh4Pin<RemapDefault<TIM1>> for PA11<Alternate<PushPull>> {}
+#[cfg(any(feature = "stm32f100", feature = "stm32f103", feature = "connectivity"))]
 impl TimCh1Pin<RemapFull<TIM1>> for PE9<Alternate<PushPull>> {}
+#[cfg(any(feature = "stm32f100", feature = "stm32f103", feature = "connectivity"))]
 impl TimCh2Pin<RemapFull<TIM1>> for PE11<Alternate<PushPull>> {}
+#[cfg(any(feature = "stm32f100", feature = "stm32f103", feature = "connectivity"))]
 impl TimCh3Pin<RemapFull<TIM1>> for PE13<Alternate<PushPull>> {}
+#[cfg(any(feature = "stm32f100", feature = "stm32f103", feature = "connectivity"))]
 impl TimCh4Pin<RemapFull<TIM1>> for PE14<Alternate<PushPull>> {}
-impl TimCh1Pin<RemapPart1<TIM1>> for PA8<Alternate<PushPull>> {}
-impl TimCh2Pin<RemapPart1<TIM1>> for PA9<Alternate<PushPull>> {}
-impl TimCh3Pin<RemapPart1<TIM1>> for PA10<Alternate<PushPull>> {}
-impl TimCh4Pin<RemapPart1<TIM1>> for PA11<Alternate<PushPull>> {}
+#[cfg(any(feature = "stm32f100", feature = "stm32f103", feature = "connectivity"))]
+impl TimCh1Pin<RemapPartial1<TIM1>> for PA8<Alternate<PushPull>> {}
+#[cfg(any(feature = "stm32f100", feature = "stm32f103", feature = "connectivity"))]
+impl TimCh2Pin<RemapPartial1<TIM1>> for PA9<Alternate<PushPull>> {}
+#[cfg(any(feature = "stm32f100", feature = "stm32f103", feature = "connectivity"))]
+impl TimCh3Pin<RemapPartial1<TIM1>> for PA10<Alternate<PushPull>> {}
+#[cfg(any(feature = "stm32f100", feature = "stm32f103", feature = "connectivity"))]
+impl TimCh4Pin<RemapPartial1<TIM1>> for PA11<Alternate<PushPull>> {}
 impl TimCh1Pin<RemapDefault<TIM10>> for PB8<Alternate<PushPull>> {}
-#[cfg(feature = "high")]
+#[cfg(any(feature = "xl", feature = "high"))]
 impl TimCh1Pin<RemapFull<TIM10>> for PF6<Alternate<PushPull>> {}
 impl TimCh1Pin<RemapDefault<TIM11>> for PB9<Alternate<PushPull>> {}
-#[cfg(feature = "high")]
+#[cfg(any(feature = "xl", feature = "high"))]
 impl TimCh1Pin<RemapFull<TIM11>> for PF7<Alternate<PushPull>> {}
 impl TimCh1Pin<RemapDefault<TIM12>> for PB14<Alternate<PushPull>> {}
 impl TimCh2Pin<RemapDefault<TIM12>> for PB15<Alternate<PushPull>> {}
 impl TimCh1Pin<RemapDefault<TIM13>> for PA6<Alternate<PushPull>> {}
-#[cfg(feature = "high")]
+#[cfg(any(feature = "xl", feature = "high"))]
 impl TimCh1Pin<RemapFull<TIM13>> for PF8<Alternate<PushPull>> {}
 impl TimCh1Pin<RemapDefault<TIM14>> for PA7<Alternate<PushPull>> {}
-#[cfg(feature = "high")]
+#[cfg(any(feature = "xl", feature = "high"))]
 impl TimCh1Pin<RemapFull<TIM14>> for PF9<Alternate<PushPull>> {}
 impl TimCh1Pin<RemapDefault<TIM2>> for PA0<Alternate<PushPull>> {}
 impl TimCh2Pin<RemapDefault<TIM2>> for PA1<Alternate<PushPull>> {}
@@ -63,14 +75,14 @@ impl TimCh1Pin<RemapFull<TIM2>> for PA15<Alternate<PushPull>> {}
 impl TimCh2Pin<RemapFull<TIM2>> for PB3<Alternate<PushPull>> {}
 impl TimCh3Pin<RemapFull<TIM2>> for PB10<Alternate<PushPull>> {}
 impl TimCh4Pin<RemapFull<TIM2>> for PB11<Alternate<PushPull>> {}
-impl TimCh1Pin<RemapPart1<TIM2>> for PA15<Alternate<PushPull>> {}
-impl TimCh2Pin<RemapPart1<TIM2>> for PB3<Alternate<PushPull>> {}
-impl TimCh3Pin<RemapPart1<TIM2>> for PA2<Alternate<PushPull>> {}
-impl TimCh4Pin<RemapPart1<TIM2>> for PA3<Alternate<PushPull>> {}
-impl TimCh1Pin<RemapPart2<TIM2>> for PA0<Alternate<PushPull>> {}
-impl TimCh2Pin<RemapPart2<TIM2>> for PA1<Alternate<PushPull>> {}
-impl TimCh3Pin<RemapPart2<TIM2>> for PB10<Alternate<PushPull>> {}
-impl TimCh4Pin<RemapPart2<TIM2>> for PB11<Alternate<PushPull>> {}
+impl TimCh1Pin<RemapPartial1<TIM2>> for PA15<Alternate<PushPull>> {}
+impl TimCh2Pin<RemapPartial1<TIM2>> for PB3<Alternate<PushPull>> {}
+impl TimCh3Pin<RemapPartial1<TIM2>> for PA2<Alternate<PushPull>> {}
+impl TimCh4Pin<RemapPartial1<TIM2>> for PA3<Alternate<PushPull>> {}
+impl TimCh1Pin<RemapPartial2<TIM2>> for PA0<Alternate<PushPull>> {}
+impl TimCh2Pin<RemapPartial2<TIM2>> for PA1<Alternate<PushPull>> {}
+impl TimCh3Pin<RemapPartial2<TIM2>> for PB10<Alternate<PushPull>> {}
+impl TimCh4Pin<RemapPartial2<TIM2>> for PB11<Alternate<PushPull>> {}
 impl TimCh1Pin<RemapDefault<TIM3>> for PA6<Alternate<PushPull>> {}
 impl TimCh2Pin<RemapDefault<TIM3>> for PA7<Alternate<PushPull>> {}
 impl TimCh3Pin<RemapDefault<TIM3>> for PB0<Alternate<PushPull>> {}
@@ -79,17 +91,25 @@ impl TimCh1Pin<RemapFull<TIM3>> for PC6<Alternate<PushPull>> {}
 impl TimCh2Pin<RemapFull<TIM3>> for PC7<Alternate<PushPull>> {}
 impl TimCh3Pin<RemapFull<TIM3>> for PC8<Alternate<PushPull>> {}
 impl TimCh4Pin<RemapFull<TIM3>> for PC9<Alternate<PushPull>> {}
-impl TimCh1Pin<RemapPart1<TIM3>> for PB4<Alternate<PushPull>> {}
-impl TimCh2Pin<RemapPart1<TIM3>> for PB5<Alternate<PushPull>> {}
-impl TimCh3Pin<RemapPart1<TIM3>> for PB0<Alternate<PushPull>> {}
-impl TimCh4Pin<RemapPart1<TIM3>> for PB1<Alternate<PushPull>> {}
+impl TimCh1Pin<RemapPartial1<TIM3>> for PB4<Alternate<PushPull>> {}
+impl TimCh2Pin<RemapPartial1<TIM3>> for PB5<Alternate<PushPull>> {}
+impl TimCh3Pin<RemapPartial1<TIM3>> for PB0<Alternate<PushPull>> {}
+impl TimCh4Pin<RemapPartial1<TIM3>> for PB1<Alternate<PushPull>> {}
+#[cfg(feature = "medium")]
 impl TimCh1Pin<RemapDefault<TIM4>> for PB6<Alternate<PushPull>> {}
+#[cfg(feature = "medium")]
 impl TimCh2Pin<RemapDefault<TIM4>> for PB7<Alternate<PushPull>> {}
+#[cfg(feature = "medium")]
 impl TimCh3Pin<RemapDefault<TIM4>> for PB8<Alternate<PushPull>> {}
+#[cfg(feature = "medium")]
 impl TimCh4Pin<RemapDefault<TIM4>> for PB9<Alternate<PushPull>> {}
+#[cfg(feature = "medium")]
 impl TimCh1Pin<RemapFull<TIM4>> for PD12<Alternate<PushPull>> {}
+#[cfg(feature = "medium")]
 impl TimCh2Pin<RemapFull<TIM4>> for PD13<Alternate<PushPull>> {}
+#[cfg(feature = "medium")]
 impl TimCh3Pin<RemapFull<TIM4>> for PD14<Alternate<PushPull>> {}
+#[cfg(feature = "medium")]
 impl TimCh4Pin<RemapFull<TIM4>> for PD15<Alternate<PushPull>> {}
 impl TimCh1Pin<RemapDefault<TIM5>> for PA0<Alternate<PushPull>> {}
 impl TimCh2Pin<RemapDefault<TIM5>> for PA1<Alternate<PushPull>> {}
@@ -121,7 +141,7 @@ impl RemapMode<TIM1> for RemapFull<TIM1> {
             .modify_mapr(unsafe { |_, w| w.tim1_remap().bits(0b11) });
     }
 }
-impl RemapMode<TIM1> for RemapPart1<TIM1> {
+impl RemapMode<TIM1> for RemapPartial1<TIM1> {
     fn remap(afio: &mut Afio) {
         afio.mapr
             .modify_mapr(unsafe { |_, w| w.tim1_remap().bits(0b01) });
@@ -182,13 +202,13 @@ impl RemapMode<TIM2> for RemapFull<TIM2> {
             .modify_mapr(unsafe { |_, w| w.tim2_remap().bits(0b11) });
     }
 }
-impl RemapMode<TIM2> for RemapPart1<TIM2> {
+impl RemapMode<TIM2> for RemapPartial1<TIM2> {
     fn remap(afio: &mut Afio) {
         afio.mapr
             .modify_mapr(unsafe { |_, w| w.tim2_remap().bits(0b01) });
     }
 }
-impl RemapMode<TIM2> for RemapPart2<TIM2> {
+impl RemapMode<TIM2> for RemapPartial2<TIM2> {
     fn remap(afio: &mut Afio) {
         afio.mapr
             .modify_mapr(unsafe { |_, w| w.tim2_remap().bits(0b10) });
@@ -206,7 +226,7 @@ impl RemapMode<TIM3> for RemapFull<TIM3> {
             .modify_mapr(unsafe { |_, w| w.tim3_remap().bits(0b11) });
     }
 }
-impl RemapMode<TIM3> for RemapPart1<TIM3> {
+impl RemapMode<TIM3> for RemapPartial1<TIM3> {
     fn remap(afio: &mut Afio) {
         afio.mapr
             .modify_mapr(unsafe { |_, w| w.tim3_remap().bits(0b10) });

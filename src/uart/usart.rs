@@ -232,8 +232,8 @@ impl<U: Instance + Steal> Uart<U> {
         Rx::<Self>::new([self.steal(), self.steal()])
     }
 
-    pub fn get_interrupt_handler(&self) -> UartInterrupt<Self> {
-        UartInterrupt::new(self.steal())
+    pub fn get_idle_interrupt_handler(&self) -> UartIdleInterrupt<Self> {
+        UartIdleInterrupt::new(self.steal())
     }
 
     fn config(&mut self, config: Config, mcu: &mut Mcu) {

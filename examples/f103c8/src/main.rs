@@ -116,12 +116,12 @@ fn uart_interrupt_init<U: UartDev + 'static>(
     rx: uart::Rx<U>,
     mcu: &mut Mcu,
     it_line: pac::interrupt,
-    callback_handle: &hal::interrupt::Callback,
+    interrupt_callback: &hal::interrupt::Callback,
 ) -> UartPollTask<impl embedded_io::Write + use<U>, impl embedded_io::Read + use<U>> {
     mcu.nvic.enable(it_line, false);
     let (tx, mut tx_it) = tx.into_interrupt(64, 0, 10_000);
     let (rx, mut rx_it) = rx.into_interrupt(64, 0);
-    callback_handle.set(mcu, move || {
+    interrupt_callback.set(mcu, move || {
         rx_it.handler();
         tx_it.handler();
     });
@@ -130,6 +130,5 @@ fn uart_interrupt_init<U: UartDev + 'static>(
 
 mod all_it {
     use super::hal::{interrupt_handler, pac::interrupt};
-
     interrupt_handler!((USART1, USART1_CB), (EXTI1, EXTI1_CB),);
 }

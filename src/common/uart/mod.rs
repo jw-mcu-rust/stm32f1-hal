@@ -104,30 +104,29 @@ impl<U: UartDev> Rx<U> {
 
 // ------------------------------------------------------------------------------------------------
 
-// TODO rename to idle interrupt
-// UART interrupt handler
-pub struct UartInterrupt<U: UartDev> {
+// UART idle interrupt handler
+pub struct UartIdleInterrupt<U: UartDev> {
     uart: U,
 }
 
-impl<U: UartDev> UartInterrupt<U> {
+impl<U: UartDev> UartIdleInterrupt<U> {
     pub(crate) fn new(uart: U) -> Self {
         Self { uart }
     }
 
     #[inline]
-    pub fn is_interrupted(&mut self, event: UartEvent) -> bool {
-        self.uart.is_interrupted(event)
+    pub fn is_interrupted(&mut self) -> bool {
+        self.uart.is_interrupted(UartEvent::Idle)
     }
 
     #[inline]
-    pub fn listen(&mut self, event: UartEvent) {
-        self.uart.set_interrupt(event, true);
+    pub fn listen(&mut self) {
+        self.uart.set_interrupt(UartEvent::Idle, true);
     }
 
     #[inline]
-    pub fn unlisten(&mut self, event: UartEvent) {
-        self.uart.set_interrupt(event, false);
+    pub fn unlisten(&mut self) {
+        self.uart.set_interrupt(UartEvent::Idle, false);
     }
 }
 

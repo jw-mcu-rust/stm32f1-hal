@@ -1,6 +1,8 @@
 #![allow(unused_macros)]
 #![allow(unused_imports)]
 
+pub use core::ops::Deref;
+
 macro_rules! impl_wrap_func {
     (fn $func:ident(&$($life:lifetime)? self $(, $arg:ident: $arg_ty:ty)*) $(-> $ret:ty)?; $($rest_func:tt)*) => {
         #[inline(always)]

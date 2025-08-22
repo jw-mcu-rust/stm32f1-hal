@@ -16,7 +16,7 @@ pub struct UartInterruptTx<U> {
 
 impl<U> UartInterruptTx<U>
 where
-    U: UartDev,
+    U: UartPeriph,
 {
     pub(super) fn new(
         uart: U,
@@ -33,11 +33,11 @@ where
     }
 }
 
-impl<U: UartDev> ErrorType for UartInterruptTx<U> {
+impl<U: UartPeriph> ErrorType for UartInterruptTx<U> {
     type Error = Error;
 }
 
-impl<U: UartDev> Write for UartInterruptTx<U> {
+impl<U: UartPeriph> Write for UartInterruptTx<U> {
     fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
         if buf.len() == 0 {
             return Err(Error::Other);
@@ -90,7 +90,7 @@ pub struct UartInterruptTxHandler<U> {
 
 impl<U> UartInterruptTxHandler<U>
 where
-    U: UartDev,
+    U: UartPeriph,
 {
     pub(super) fn new(uart: U, r: Consumer<u8>) -> Self {
         Self { uart, r }
@@ -99,7 +99,7 @@ where
 
 impl<U> UartInterruptTxHandler<U>
 where
-    U: UartDev,
+    U: UartPeriph,
 {
     pub fn handler(&mut self) {
         if let Ok(data) = self.r.peek() {
@@ -122,7 +122,7 @@ pub struct UartInterruptRx<U> {
 
 impl<U> UartInterruptRx<U>
 where
-    U: UartDev,
+    U: UartPeriph,
 {
     pub(super) fn new(uart: U, r: Consumer<u8>, retry_times: u32) -> Self {
         Self {
@@ -133,13 +133,13 @@ where
     }
 }
 
-impl<U: UartDev> ErrorType for UartInterruptRx<U> {
+impl<U: UartPeriph> ErrorType for UartInterruptRx<U> {
     type Error = Error;
 }
 
 impl<U> Read for UartInterruptRx<U>
 where
-    U: UartDev,
+    U: UartPeriph,
 {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
         if buf.len() == 0 {
@@ -168,7 +168,7 @@ pub struct UartInterruptRxHandler<U> {
 
 impl<U> UartInterruptRxHandler<U>
 where
-    U: UartDev,
+    U: UartPeriph,
 {
     pub(super) fn new(mut uart: U, w: Producer<u8>) -> Self {
         uart.set_interrupt(UartEvent::RxNotEmpty, true);

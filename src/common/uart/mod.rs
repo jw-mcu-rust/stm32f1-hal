@@ -21,7 +21,7 @@ pub struct Tx<U> {
     uart: [U; 2],
 }
 
-impl<U: UartDev> Tx<U> {
+impl<U: UartPeriph> Tx<U> {
     pub(crate) fn new(uart: [U; 2]) -> Self {
         Self { uart }
     }
@@ -67,11 +67,11 @@ impl<U: UartDev> Tx<U> {
 // ------------------------------------------------------------------------------------------------
 
 /// UART Receiver
-pub struct Rx<U: UartDev> {
+pub struct Rx<U: UartPeriph> {
     uart: [U; 2],
 }
 
-impl<U: UartDev> Rx<U> {
+impl<U: UartPeriph> Rx<U> {
     pub(crate) fn new(uart: [U; 2]) -> Self {
         Self { uart }
     }
@@ -105,11 +105,11 @@ impl<U: UartDev> Rx<U> {
 // ------------------------------------------------------------------------------------------------
 
 // UART idle interrupt handler
-pub struct UartIdleInterrupt<U: UartDev> {
+pub struct UartIdleInterrupt<U: UartPeriph> {
     uart: U,
 }
 
-impl<U: UartDev> UartIdleInterrupt<U> {
+impl<U: UartPeriph> UartIdleInterrupt<U> {
     pub(crate) fn new(uart: U) -> Self {
         Self { uart }
     }
@@ -130,9 +130,9 @@ impl<U: UartDev> UartIdleInterrupt<U> {
     }
 }
 
-// ----------------------------------------------------------------------------
+// Device Trait --------------------------------------------------------------
 
-pub trait UartDev {
+pub trait UartPeriph {
     fn set_dma_tx(&mut self, enable: bool);
     fn set_dma_rx(&mut self, enable: bool);
 

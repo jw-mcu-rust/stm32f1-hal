@@ -59,16 +59,20 @@ fn main() -> ! {
     // Keep them in one place for easier management
     mcu.nvic.set_priority(Interrupt::USART1, 1);
 
-    // UART ---------------------------------------
+    // UART -------------------------------------
 
-    // let pin_tx = gpioa.pa9.into_alternate_push_pull(&mut gpioa.crh);
-    // let pin_rx = gpioa.pa10.into_pull_up_input(&mut gpioa.crh);
-    let pin_tx = gpiob.pb6.into_alternate_push_pull(&mut gpiob.crl);
-    let pin_rx = gpiob.pb7.into_pull_up_input(&mut gpiob.crl);
+    // let pin_tx = Some(gpioa.pa9.into_alternate_push_pull(&mut gpioa.crh));
+    // let pin_rx = Some(gpioa.pa10.into_pull_up_input(&mut gpioa.crh));
+    let pin_tx = Some(gpiob.pb6.into_alternate_push_pull(&mut gpiob.crl));
+    let pin_rx = Some(gpiob.pb7.into_pull_up_input(&mut gpiob.crl));
+    // let pin_rx = hal::afio::NONE_PIN;
 
     let config = uart::Config::default();
     let uart1 = dp.USART1.constrain();
-    let (uart_tx, uart_rx) = uart1.into_tx_rx((pin_tx, pin_rx), config, &mut mcu);
+    let (Some(uart_tx), Some(uart_rx)) = uart1.into_tx_rx((pin_tx, pin_rx), config, &mut mcu)
+    else {
+        panic!()
+    };
 
     // let mut uart_task = uart_poll_init(uart_tx, uart_rx);
     let mut uart_task = uart_interrupt_init(
@@ -79,7 +83,7 @@ fn main() -> ! {
         &all_it::USART1_CB,
     );
 
-    // LED ----------------------------------------
+    // LED --------------------------------------
 
     let mut led = gpiob
         .pb0
@@ -103,7 +107,7 @@ fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
 
-fn uart_poll_init<U: UartDev>(
+fn uart_poll_init<U: UartPeriph>(
     tx: uart::Tx<U>,
     rx: uart::Rx<U>,
 ) -> UartPollTask<impl embedded_io::Write, impl embedded_io::Read> {
@@ -111,7 +115,7 @@ fn uart_poll_init<U: UartDev>(
     UartPollTask::new(32, uart_tx, uart_rx)
 }
 
-fn uart_interrupt_init<U: UartDev + 'static>(
+fn uart_interrupt_init<U: UartPeriph + 'static>(
     tx: uart::Tx<U>,
     rx: uart::Rx<U>,
     mcu: &mut Mcu,

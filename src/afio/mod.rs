@@ -62,13 +62,15 @@ impl EVCR {
 }
 
 // Remap Mode
-pub trait RemapMode<PERIPH> {
+pub trait RemapMode<REG> {
     fn remap(afio: &mut Afio);
 }
-pub struct RemapDefault<PERIPH>(PhantomData<PERIPH>);
-pub struct RemapPart1<PERIPH>(PhantomData<PERIPH>);
-pub struct RemapPart2<PERIPH>(PhantomData<PERIPH>);
-pub struct RemapFull<PERIPH>(PhantomData<PERIPH>);
+pub struct RemapDefault<REG>(PhantomData<REG>);
+pub struct RemapPart1<REG>(PhantomData<REG>);
+pub struct RemapPart2<REG>(PhantomData<REG>);
+pub struct RemapFull<REG>(PhantomData<REG>);
+pub struct NonePin {}
+pub const NONE_PIN: Option<NonePin> = None::<NonePin>;
 
 /// AF remap and debug I/O configuration register (MAPR)
 ///

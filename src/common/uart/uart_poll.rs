@@ -13,7 +13,7 @@ pub struct UartPollTx<U> {
     flush_retry_times: u32,
 }
 
-impl<U: UartDev> UartPollTx<U> {
+impl<U: UartPeriph> UartPollTx<U> {
     pub(super) fn new(uart: U, retry_times: u32, flush_retry_times: u32) -> Self {
         Self {
             uart,
@@ -23,16 +23,16 @@ impl<U: UartDev> UartPollTx<U> {
     }
 }
 
-impl<U: UartDev> e_nb::serial::ErrorType for UartPollTx<U> {
+impl<U: UartPeriph> e_nb::serial::ErrorType for UartPollTx<U> {
     type Error = Error;
 }
-impl<U: UartDev> e_io::ErrorType for UartPollTx<U> {
+impl<U: UartPeriph> e_io::ErrorType for UartPollTx<U> {
     type Error = Error;
 }
 
 // NB Write ----
 
-impl<U: UartDev> e_nb::serial::Write<u16> for UartPollTx<U> {
+impl<U: UartPeriph> e_nb::serial::Write<u16> for UartPollTx<U> {
     #[inline]
     fn write(&mut self, word: u16) -> nb::Result<(), Self::Error> {
         self.uart.write(word)
@@ -49,7 +49,7 @@ impl<U: UartDev> e_nb::serial::Write<u16> for UartPollTx<U> {
 
 // IO Write ----
 
-impl<U: UartDev> e_io::Write for UartPollTx<U> {
+impl<U: UartPeriph> e_io::Write for UartPollTx<U> {
     fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
         if buf.len() == 0 {
             return Err(Error::Other);
@@ -100,7 +100,7 @@ pub struct UartPollRx<U> {
     continue_retry_times: u32,
 }
 
-impl<U: UartDev> UartPollRx<U> {
+impl<U: UartPeriph> UartPollRx<U> {
     pub(super) fn new(uart: U, retry_times: u32, continue_retry_times: u32) -> Self {
         Self {
             uart,
@@ -110,16 +110,16 @@ impl<U: UartDev> UartPollRx<U> {
     }
 }
 
-impl<U: UartDev> e_nb::serial::ErrorType for UartPollRx<U> {
+impl<U: UartPeriph> e_nb::serial::ErrorType for UartPollRx<U> {
     type Error = Error;
 }
-impl<U: UartDev> e_io::ErrorType for UartPollRx<U> {
+impl<U: UartPeriph> e_io::ErrorType for UartPollRx<U> {
     type Error = Error;
 }
 
 // NB Read ----
 
-impl<U: UartDev> e_nb::serial::Read<u16> for UartPollRx<U> {
+impl<U: UartPeriph> e_nb::serial::Read<u16> for UartPollRx<U> {
     #[inline]
     fn read(&mut self) -> nb::Result<u16, Self::Error> {
         self.uart.read()
@@ -128,7 +128,7 @@ impl<U: UartDev> e_nb::serial::Read<u16> for UartPollRx<U> {
 
 // IO Read ----
 
-impl<U: UartDev> e_io::Read for UartPollRx<U> {
+impl<U: UartPeriph> e_io::Read for UartPollRx<U> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
         if buf.len() == 0 {
             return Err(Error::Other);

@@ -4,7 +4,7 @@ use crate::pac::uart4::{self, cr1};
 
 // Do NOT manually modify the code between begin and end!
 // It's synced by scripts/sync_code.py.
-// sync begin
+// sync1 begin
 
 use crate::{
     Mcu, Steal,
@@ -33,7 +33,7 @@ pub trait UartInit<REG: RegisterBlock> {
 
 // Initialization -------------------------------------------------------------
 
-// Use a wrap to avoid conflicting implementations of trait
+// Use a wrapper to avoid conflicting implementations of trait
 pub struct Uart<REG: RegisterBlock> {
     reg: REG,
 }
@@ -105,6 +105,25 @@ impl<REG: RegisterBlock + Steal> Uart<REG> {
         });
     }
 }
+
+// sync1 end
+
+impl<REG: RegisterBlock> Uart<REG> {
+    fn set_stop_bits(&mut self, bits: StopBits) {
+        use pac::uart4::cr2::STOP;
+
+        // StopBits::STOP0P5 and StopBits::STOP1P5 aren't supported when using UART
+        // STOP_A::STOP1 and STOP_A::STOP2 will be used, respectively
+        self.reg.cr2().write(|w| {
+            w.stop().variant(match bits {
+                StopBits::STOP0P5 | StopBits::STOP1 => STOP::Stop1,
+                StopBits::STOP1P5 | StopBits::STOP2 => STOP::Stop2,
+            })
+        });
+    }
+}
+
+// sync2 begin
 
 // Implement Peripheral -------------------------------------------------------
 
@@ -243,22 +262,7 @@ impl<REG: RegisterBlock> UartPeriph for Uart<REG> {
     }
 }
 
-// sync end
-
-impl<REG: RegisterBlock> Uart<REG> {
-    fn set_stop_bits(&mut self, bits: StopBits) {
-        use pac::uart4::cr2::STOP;
-
-        // StopBits::STOP0P5 and StopBits::STOP1P5 aren't supported when using UART
-        // STOP_A::STOP1 and STOP_A::STOP2 will be used, respectively
-        self.reg.cr2().write(|w| {
-            w.stop().variant(match bits {
-                StopBits::STOP0P5 | StopBits::STOP1 => STOP::Stop1,
-                StopBits::STOP1P5 | StopBits::STOP2 => STOP::Stop2,
-            })
-        });
-    }
-}
+// sync2 end
 
 impl_uart_init!(pac::UART4, pac::UART5);
 wrap_trait_deref!(

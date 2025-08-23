@@ -1,6 +1,6 @@
 //! RTIC Monotonic implementation
 
-use super::{FTimer, Instance};
+use super::{FTimer, RegisterBlock};
 use crate::rcc::Rcc;
 use core::ops::{Deref, DerefMut};
 pub use fugit::{self, ExtU32};
@@ -27,7 +27,7 @@ impl<TIM, const FREQ: u32> DerefMut for MonoTimer<TIM, FREQ> {
 /// `MonoTimer` with precision of 1 μs (1 MHz sampling)
 pub type MonoTimerUs<TIM> = MonoTimer<TIM, 1_000_000>;
 
-impl<TIM: Instance, const FREQ: u32> MonoTimer<TIM, FREQ> {
+impl<TIM: RegisterBlock, const FREQ: u32> MonoTimer<TIM, FREQ> {
     /// Releases the TIM peripheral
     pub fn release(mut self) -> FTimer<TIM, FREQ> {
         // stop counter

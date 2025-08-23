@@ -3,6 +3,7 @@
 
 use crate::pac::tim1;
 
+use super::{Channel, CountDirection, freq_to_presc_arr};
 use crate::{
     Mcu, Steal, afio,
     afio::{RemapMode, timer_remap::*},
@@ -10,7 +11,6 @@ use crate::{
     pac,
     rcc::{BusClock, BusTimerClock, Enable, Reset},
     time::Hertz,
-    timer::{Channel, CountDirection},
 };
 
 // Initialization -------------------------------------------------------------
@@ -65,7 +65,6 @@ impl<REG: RegisterBlock + Steal> Timer<REG> {
     ) {
         self.config(mcu);
         REMAP::remap(&mut mcu.afio);
-
         self.set_count_direction(dir);
 
         // The reference manual is a bit ambiguous about when enabling this bit is really
@@ -116,24 +115,6 @@ impl<REG: RegisterBlock + Steal> Timer<REG> {
         self.reg
             .cr1()
             .modify(|_, w| w.dir().bit(dir == CountDirection::Down));
-    }
-}
-
-impl From<PwmMode> for u8 {
-    fn from(value: PwmMode) -> Self {
-        match value {
-            PwmMode::Mode1 => 6,
-            PwmMode::Mode2 => 7,
-        }
-    }
-}
-
-impl From<PwmPolarity> for bool {
-    fn from(value: PwmPolarity) -> Self {
-        match value {
-            PwmPolarity::ActiveHigh => false,
-            PwmPolarity::ActiveLow => true,
-        }
     }
 }
 
@@ -262,28 +243,8 @@ impl_pwm_channel!(PwmChannel2, ccmr1_output, oc2pe, oc2m, cc2p, cc2e, ccr2);
 impl_pwm_channel!(PwmChannel3, ccmr2_output, oc3pe, oc3m, cc3p, cc3e, ccr3);
 impl_pwm_channel!(PwmChannel4, ccmr2_output, oc4pe, oc4m, cc4p, cc4e, ccr4);
 
-pub fn freq_to_presc_arr(timer_clk: u32, count_freq: u32, update_freq: u32) -> (u32, u32) {
-    assert!(count_freq <= timer_clk);
-
-    let prescaler = if count_freq > 0 {
-        timer_clk / count_freq - 1
-    } else {
-        0
-    };
-
-    let period = if update_freq > 0 {
-        count_freq / update_freq - 1
-    } else {
-        0
-    };
-
-    assert!(prescaler <= 0xFFFF);
-    assert!(period <= 0xFFFF);
-    (prescaler, period)
-}
-
 impl_timer_init!(pac::TIM1);
-#[cfg(feature = "high")]
+#[cfg(all(feature = "stm32f103", feature = "high"))]
 impl_timer_init!(pac::TIM8);
 wrap_trait_deref!(
     (pac::TIM1, pac::TIM8,),

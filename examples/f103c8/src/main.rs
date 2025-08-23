@@ -11,14 +11,13 @@ use jw_stm32f1_hal as hal;
 use jw_stm32f1_hal::{
     Heap, Mcu,
     afio::{NONE_PIN, RemapDefault},
-    common::timer::*,
     embedded_hal, embedded_io,
     gpio::PinState,
     nvic_scb::PriorityGrouping,
     pac::{self, Interrupt},
     prelude::*,
     rcc,
-    timer::{CountDirection, Timer},
+    timer::*,
     uart::{self, UartPeriph},
 };
 
@@ -91,7 +90,7 @@ fn main() -> ! {
     let mut led = gpiob
         .pb0
         .into_open_drain_output_with_state(&mut gpiob.crl, PinState::High);
-    let mut timer = Timer::syst(cp.SYST, &mcu.rcc.clocks).counter_hz();
+    let mut timer = cp.SYST.counter_hz(&mcu.rcc.clocks);
     let freq = 100.Hz();
     timer.start(freq).unwrap();
     let mut led_task = LedTask::new(led, freq.raw());

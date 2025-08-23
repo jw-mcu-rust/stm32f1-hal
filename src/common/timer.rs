@@ -1,6 +1,6 @@
 use crate::time::Hertz;
 
-pub trait BasicTimer {
+pub trait PwmTimer {
     fn start(&mut self);
     fn stop(&mut self);
     fn config_freq(&mut self, count_freq: Hertz, update_freq: Hertz);
@@ -8,7 +8,7 @@ pub trait BasicTimer {
     fn get_count_value(&self) -> u32;
 }
 
-pub trait TimerChannel {
+pub trait PwmChannel {
     fn config(&mut self, mode: PwmMode, polarity: PwmPolarity, duty: u32);
     fn set_enable(&mut self, en: bool);
     /// Remember to use `get_max_duty()`

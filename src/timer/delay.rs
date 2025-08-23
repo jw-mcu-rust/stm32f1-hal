@@ -1,15 +1,14 @@
 //! Delays
 
-use super::{FTimer, Instance, Timer};
+use super::{FTimer, Instance, SystemTimer};
 use core::ops::{Deref, DerefMut};
-use cortex_m::peripheral::SYST;
 use fugit::{MicrosDurationU32, TimerDurationU32};
 
 /// Timer as a delay provider (SysTick by default)
-pub struct SysDelay(Timer<SYST>);
+pub struct SysDelay(SystemTimer);
 
 impl Deref for SysDelay {
-    type Target = Timer<SYST>;
+    type Target = SystemTimer;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -23,12 +22,12 @@ impl DerefMut for SysDelay {
 
 impl SysDelay {
     /// Releases the timer resource
-    pub fn release(self) -> Timer<SYST> {
+    pub fn release(self) -> SystemTimer {
         self.0
     }
 }
 
-impl Timer<SYST> {
+impl SystemTimer {
     pub fn delay(self) -> SysDelay {
         SysDelay(self)
     }
@@ -44,16 +43,16 @@ impl SysDelay {
         while total_rvr != 0 {
             let current_rvr = total_rvr.min(MAX_RVR);
 
-            self.tim.set_reload(current_rvr);
-            self.tim.clear_current();
-            self.tim.enable_counter();
+            self.syst.set_reload(current_rvr);
+            self.syst.clear_current();
+            self.syst.enable_counter();
 
             // Update the tracking variable while we are waiting...
             total_rvr -= current_rvr;
 
-            while !self.tim.has_wrapped() {}
+            while !self.syst.has_wrapped() {}
 
-            self.tim.disable_counter();
+            self.syst.disable_counter();
         }
     }
 }

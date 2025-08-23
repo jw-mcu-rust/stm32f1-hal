@@ -1,3 +1,6 @@
+#![allow(dead_code)]
+#![allow(private_bounds)]
+
 use crate::pac::usart1::{self, cr1};
 
 // sync1 begin
@@ -34,7 +37,6 @@ pub struct Uart<REG: RegisterBlock> {
     reg: REG,
 }
 
-#[allow(private_bounds)]
 #[allow(unused_variables)]
 impl<REG: RegisterBlock + Steal> Uart<REG> {
     fn steal(&self) -> Self {
@@ -100,11 +102,9 @@ impl<REG: RegisterBlock + Steal> Uart<REG> {
             w
         });
     }
-}
 
-// sync1 end
+    // sync1 end
 
-impl<REG: RegisterBlock> Uart<REG> {
     fn set_stop_bits(&mut self, bits: StopBits) {
         use pac::usart1::cr2::STOP;
 
@@ -263,7 +263,7 @@ impl<REG: RegisterBlock> UartPeriph for Uart<REG> {
 impl_uart_init!(pac::USART1, pac::USART2, pac::USART3);
 wrap_trait_deref!(
     (pac::USART1, pac::USART2, pac::USART3,),
-    pub trait RegisterBlock: BusClock + Enable + Reset {
+    pub(super) trait RegisterBlock: BusClock + Enable + Reset {
         fn cr1(&self) -> &usart1::CR1;
         fn dr(&self) -> &usart1::DR;
         fn brr(&self) -> &usart1::BRR;

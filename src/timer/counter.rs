@@ -1,4 +1,4 @@
-use super::{compute_arr_presc, Error, Event, FTimer, Instance, SysEvent, Timer};
+use super::{Error, Event, FTimer, Instance, SysEvent, SystemTimer, Timer, compute_arr_presc};
 use crate::pac::SYST;
 use core::convert::TryFrom;
 use core::ops::{Deref, DerefMut};
@@ -218,7 +218,7 @@ impl<TIM: Instance, const FREQ: u32> fugit_timer::Timer<FREQ> for Counter<TIM, F
     }
 }
 
-impl Timer<SYST> {
+impl SystemTimer {
     /// Creates [SysCounterHz] which takes [Hertz] as Duration
     pub fn counter_hz(self) -> SysCounterHz {
         SysCounterHz(self)
@@ -236,10 +236,10 @@ impl Timer<SYST> {
 }
 
 /// Hardware timers
-pub struct SysCounterHz(Timer<SYST>);
+pub struct SysCounterHz(SystemTimer);
 
 impl Deref for SysCounterHz {
-    type Target = Timer<SYST>;
+    type Target = SystemTimer;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -259,15 +259,15 @@ impl SysCounterHz {
             return Err(Error::WrongAutoReload);
         }
 
-        self.tim.set_reload(rvr);
-        self.tim.clear_current();
-        self.tim.enable_counter();
+        self.syst.set_reload(rvr);
+        self.syst.clear_current();
+        self.syst.enable_counter();
 
         Ok(())
     }
 
     pub fn wait(&mut self) -> nb::Result<(), Error> {
-        if self.tim.has_wrapped() {
+        if self.syst.has_wrapped() {
             Ok(())
         } else {
             Err(nb::Error::WouldBlock)
@@ -275,11 +275,11 @@ impl SysCounterHz {
     }
 
     pub fn cancel(&mut self) -> Result<(), Error> {
-        if !self.tim.is_counter_enabled() {
+        if !self.syst.is_counter_enabled() {
             return Err(Error::Disabled);
         }
 
-        self.tim.disable_counter();
+        self.syst.disable_counter();
         Ok(())
     }
 }
@@ -287,10 +287,10 @@ impl SysCounterHz {
 pub type SysCounterUs = SysCounter<1_000_000>;
 
 /// SysTick timer with precision of 1 μs (1 MHz sampling)
-pub struct SysCounter<const FREQ: u32>(Timer<SYST>);
+pub struct SysCounter<const FREQ: u32>(SystemTimer);
 
 impl<const FREQ: u32> Deref for SysCounter<FREQ> {
-    type Target = Timer<SYST>;
+    type Target = SystemTimer;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -306,14 +306,14 @@ impl<const FREQ: u32> SysCounter<FREQ> {
     /// Starts listening for an `event`
     pub fn listen(&mut self, event: SysEvent) {
         match event {
-            SysEvent::Update => self.tim.enable_interrupt(),
+            SysEvent::Update => self.syst.enable_interrupt(),
         }
     }
 
     /// Stops listening for an `event`
     pub fn unlisten(&mut self, event: SysEvent) {
         match event {
-            SysEvent::Update => self.tim.disable_interrupt(),
+            SysEvent::Update => self.syst.disable_interrupt(),
         }
     }
 
@@ -328,15 +328,15 @@ impl<const FREQ: u32> SysCounter<FREQ> {
             return Err(Error::WrongAutoReload);
         }
 
-        self.tim.set_reload(rvr);
-        self.tim.clear_current();
-        self.tim.enable_counter();
+        self.syst.set_reload(rvr);
+        self.syst.clear_current();
+        self.syst.enable_counter();
 
         Ok(())
     }
 
     pub fn wait(&mut self) -> nb::Result<(), Error> {
-        if self.tim.has_wrapped() {
+        if self.syst.has_wrapped() {
             Ok(())
         } else {
             Err(nb::Error::WouldBlock)
@@ -344,11 +344,11 @@ impl<const FREQ: u32> SysCounter<FREQ> {
     }
 
     pub fn cancel(&mut self) -> Result<(), Error> {
-        if !self.tim.is_counter_enabled() {
+        if !self.syst.is_counter_enabled() {
             return Err(Error::Disabled);
         }
 
-        self.tim.disable_counter();
+        self.syst.disable_counter();
         Ok(())
     }
 }

@@ -2,7 +2,7 @@ type TimerX = pac::TIM6;
 
 // Do NOT manually modify the code between begin and end!
 // It's synced by scripts/sync_code.py.
-// sync general begin
+// sync begin
 
 use super::*;
 use crate::{Mcu, pac};
@@ -141,12 +141,13 @@ impl GeneralTimer for TimerX {
 
     #[inline(always)]
     fn stop_in_debug(&mut self, dbg: &mut DBG, state: bool) {
-        dbg.cr().modify(|_, w| w.dbg_tim1_stop().bit(state));
+        // sync dbg_t6
+        dbg.cr().modify(|_, w| w.dbg_tim6_stop().bit(state));
+        // sync dbg_end
     }
 }
 
-// sync general end
-// sync m6 begin
+// sync master_t6
 
 impl MasterTimer for TimerX {
     type Mms = pac::tim6::cr2::MMS;
@@ -156,4 +157,4 @@ impl MasterTimer for TimerX {
     }
 }
 
-// sync m6 end
+// sync end

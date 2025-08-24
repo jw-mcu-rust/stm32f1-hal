@@ -3,7 +3,7 @@ const CH_NUMBER: u8 = 2;
 
 // Do NOT manually modify the code between begin and end!
 // It's synced by scripts/sync_code.py.
-// sync general begin
+// sync begin
 
 use super::*;
 use crate::{Mcu, pac};
@@ -142,29 +142,27 @@ impl GeneralTimer for TimerX {
 
     #[inline(always)]
     fn stop_in_debug(&mut self, dbg: &mut DBG, state: bool) {
-        dbg.cr().modify(|_, w| w.dbg_tim1_stop().bit(state));
+        // sync dbg_t15
+        dbg.cr().modify(|_, w| w.dbg_tim15_stop().bit(state));
+        // sync dbg_end
     }
 }
 
-// sync general end
-// sync pwm begin
+// sync pwm
 // PWM ------------------------------------------------------------------------
 
 impl TimerWithPwm for TimerX {
-    // sync pwm end
-    // sync start_pwm2 begin
+    // sync start_pwm_t2
 
     #[inline(always)]
     fn start_pwm(&mut self) {
         self.start();
     }
 
-    // sync start_pwm2 end
-    // sync pwm_cfg15 begin
+    // sync pwm_cfg_t15
 
     #[inline(always)]
     fn preload_output_channel_in_mode(&mut self, channel: Channel, mode: Ocm) {
-        assert!((channel as u8) < CH_NUMBER);
         match channel {
             Channel::C1 => {
                 self.ccmr1_output()
@@ -179,7 +177,6 @@ impl TimerWithPwm for TimerX {
     }
 
     fn set_polarity(&mut self, channel: Channel, polarity: PwmPolarity) {
-        assert!((channel as u8) < CH_NUMBER);
         match channel {
             Channel::C1 => {
                 self.ccer()
@@ -192,11 +189,9 @@ impl TimerWithPwm for TimerX {
             _ => (),
         }
     }
-
-    // sync pwm_cfg15 end
-    // sync pwm_ch1 begin
 }
 
+// sync pwm_ch1
 // PWM Channels ---------------------------------------------------------------
 
 impl TimerWithPwm1Ch for TimerX {
@@ -216,8 +211,7 @@ impl TimerWithPwm1Ch for TimerX {
     }
 }
 
-// sync pwm_ch1 end
-// sync pwm_ch2 begin
+// sync pwm_ch2
 
 impl TimerWithPwm2Ch for TimerX {
     #[inline(always)]
@@ -236,4 +230,4 @@ impl TimerWithPwm2Ch for TimerX {
     }
 }
 
-// sync pwm_ch2 end
+// sync end

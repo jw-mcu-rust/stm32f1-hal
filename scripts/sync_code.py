@@ -11,22 +11,22 @@ TABLE = {
     "src/timer/timer4.rs": "src/timer/timer2.rs",
     "src/timer/timer5.rs": "src/timer/timer2.rs",
     "src/timer/timer6.rs": "src/timer/timer1.rs",
-    "src/timer/timer15.rs": "src/timer/timer1.rs",
-    "src/timer/timer16.rs": "src/timer/timer1.rs",
-    "src/timer/timer17.rs": "src/timer/timer1.rs",
+    "src/timer/timer7.rs": "src/timer/timer6.rs",
+    "src/timer/timer15.rs": "src/timer/timer2.rs",
+    "src/timer/timer16.rs": "src/timer/timer2.rs",
+    "src/timer/timer17.rs": "src/timer/timer16.rs",
 }
-BEGIN_PATTERN = re.compile(r"\/\/ sync \S+ begin")
+BEGIN_PATTERN = re.compile(r"\/\/ sync .+\s")
 
 
 def get_marked_code(code: str, mark: str) -> tuple[str, str, str]:
     i = code.find(mark)
-    if i < 0:
+    if mark == "" or i < 0:
         return ("", "", "")
 
     before = code[:i]
     code = code[i:]
-    end_mark = mark.replace("begin", "end")
-    i = code.find(end_mark) + len(end_mark)
+    i = code.find("// sync", 1)
     after = code[i:]
     code = code[:i]
     return (before, code, after)
@@ -40,13 +40,15 @@ def sync_code(dest: str, src: str, check: bool) -> bool:
     with open(dest, "r", encoding="utf-8") as f:
         output = f.read()
 
+    last_mark = ""
     for mark in BEGIN_PATTERN.findall(src):
-        (_, code1, _) = get_marked_code(src, mark)
-        (before, code2, after) = get_marked_code(output, mark)
+        (_, code1, _) = get_marked_code(src, last_mark)
+        (before, code2, after) = get_marked_code(output, last_mark)
         if code2 and code1 != code2:
             synced = False
             if not check:
                 output = before + code1 + after
+        last_mark = mark
 
     if synced:
         print(f"{blue('Synced')}: {dest}", flush=True)

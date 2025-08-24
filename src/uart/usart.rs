@@ -3,7 +3,7 @@
 
 use crate::pac::usart1::{self, cr1};
 
-// sync 1 begin
+// sync begin
 
 use crate::{
     Mcu, Steal,
@@ -103,7 +103,7 @@ impl<REG: RegisterBlock + Steal> Uart<REG> {
         });
     }
 
-    // sync 1 end
+    // sync stop_bits
 
     fn set_stop_bits(&mut self, bits: StopBits) {
         use pac::usart1::cr2::STOP;
@@ -119,7 +119,7 @@ impl<REG: RegisterBlock + Steal> Uart<REG> {
     }
 }
 
-// sync 2 begin
+// sync periph
 
 // Implement Peripheral -------------------------------------------------------
 
@@ -258,7 +258,7 @@ impl<REG: RegisterBlock> UartPeriph for Uart<REG> {
     }
 }
 
-// sync 2 end
+// sync end
 
 impl_uart_init!(pac::USART1, pac::USART2, pac::USART3);
 wrap_trait_deref!(

@@ -277,12 +277,9 @@ impl From<u8> for Channel {
     }
 }
 
-impl From<PwmPolarity> for bool {
-    fn from(value: PwmPolarity) -> Self {
-        match value {
-            PwmPolarity::ActiveHigh => false,
-            PwmPolarity::ActiveLow => true,
-        }
+impl From<Channel> for u8 {
+    fn from(value: Channel) -> Self {
+        value as u8
     }
 }
 
@@ -314,21 +311,6 @@ pub enum Error {
 pub enum CountDirection {
     Up,
     Down,
-}
-
-impl From<Channel> for u8 {
-    fn from(value: Channel) -> Self {
-        value as u8
-    }
-}
-
-impl From<PwmMode> for u8 {
-    fn from(value: PwmMode) -> Self {
-        match value {
-            PwmMode::Mode1 => 6,
-            PwmMode::Mode2 => 7,
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

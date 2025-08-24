@@ -98,13 +98,10 @@ fn main() -> ! {
     // PWM --------------------------------------
 
     let c1 = gpioa.pa8.into_alternate_push_pull(&mut gpioa.crh);
-    let (mut bt, Some(mut ch1), _, _, _) =
-        dp.TIM1.constrain(&mut mcu).into_pwm4::<RemapDefault<_>>(
-            (Some(c1), NONE_PIN, NONE_PIN, NONE_PIN),
-            CountDirection::Up,
-            true,
-            &mut mcu,
-        )
+    let mut tim1 = dp.TIM1.constrain(&mut mcu);
+    tim1.set_count_direction(CountDirection::Up);
+    let (mut bt, Some(mut ch1), _) =
+        tim1.into_pwm2::<RemapDefault<_>>((Some(c1), NONE_PIN), true, &mut mcu)
     else {
         panic!()
     };

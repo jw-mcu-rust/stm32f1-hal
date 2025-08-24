@@ -6,7 +6,52 @@ use crate::{
     timer::Channel,
 };
 
-impl<TIM: Instance + TimerWithPwm4Ch + TimerDirection + Steal> Timer<TIM> {
+// Initialize -----------------------------------------------------------------
+
+impl<TIM: Instance + TimerWithPwm1Ch + Steal> Timer<TIM> {
+    pub fn into_pwm1<REMAP: RemapMode<TIM>>(
+        mut self,
+        _pin: impl TimCh1Pin<REMAP>,
+        preload: bool,
+        mcu: &mut Mcu,
+    ) -> (impl PwmTimer, impl PwmChannel) {
+        REMAP::remap(&mut mcu.afio);
+        self.tim.enable_preload(preload);
+
+        let c1 = PwmChannel1::<TIM> {
+            tim: unsafe { self.tim.steal() },
+        };
+
+        (self, c1)
+    }
+}
+
+impl<TIM: Instance + TimerWithPwm2Ch + Steal> Timer<TIM> {
+    pub fn into_pwm2<REMAP: RemapMode<TIM>>(
+        mut self,
+        pins: (Option<impl TimCh1Pin<REMAP>>, Option<impl TimCh2Pin<REMAP>>),
+        preload: bool,
+        mcu: &mut Mcu,
+    ) -> (
+        impl PwmTimer,
+        Option<impl PwmChannel>,
+        Option<impl PwmChannel>,
+    ) {
+        REMAP::remap(&mut mcu.afio);
+        self.tim.enable_preload(preload);
+
+        let c1 = pins.0.map(|_| PwmChannel1::<TIM> {
+            tim: unsafe { self.tim.steal() },
+        });
+        let c2 = pins.1.map(|_| PwmChannel2::<TIM> {
+            tim: unsafe { self.tim.steal() },
+        });
+
+        (self, c1, c2)
+    }
+}
+
+impl<TIM: Instance + TimerWithPwm4Ch + Steal> Timer<TIM> {
     pub fn into_pwm4<REMAP: RemapMode<TIM>>(
         mut self,
         pins: (
@@ -15,7 +60,6 @@ impl<TIM: Instance + TimerWithPwm4Ch + TimerDirection + Steal> Timer<TIM> {
             Option<impl TimCh3Pin<REMAP>>,
             Option<impl TimCh4Pin<REMAP>>,
         ),
-        dir: CountDirection,
         preload: bool,
         mcu: &mut Mcu,
     ) -> (
@@ -27,7 +71,6 @@ impl<TIM: Instance + TimerWithPwm4Ch + TimerDirection + Steal> Timer<TIM> {
     ) {
         REMAP::remap(&mut mcu.afio);
         self.tim.enable_preload(preload);
-        self.tim.set_count_direction(dir);
 
         let c1 = pins.0.map(|_| PwmChannel1::<TIM> {
             tim: unsafe { self.tim.steal() },
@@ -45,6 +88,14 @@ impl<TIM: Instance + TimerWithPwm4Ch + TimerDirection + Steal> Timer<TIM> {
         (self, c1, c2, c3, c4)
     }
 }
+
+impl<TIM: Instance + TimerDirection> Timer<TIM> {
+    pub fn set_count_direction(&mut self, dir: CountDirection) {
+        self.tim.set_count_direction(dir);
+    }
+}
+
+// Implement Traits -----------------------------------------------------------
 
 impl<TIM: Instance + TimerWithPwm> PwmTimer for Timer<TIM> {
     #[inline(always)]

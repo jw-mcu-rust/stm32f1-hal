@@ -147,12 +147,12 @@ impl GeneralTimer for TimerX {
 }
 
 // sync general end
-// sync ipt begin
+// sync pwm begin
 // PWM ------------------------------------------------------------------------
 
 impl TimerWithPwm for TimerX {
-    // sync ipt end
-    // sync s begin
+    // sync pwm end
+    // sync start_pwm begin
 
     #[inline(always)]
     fn start_pwm(&mut self) {
@@ -161,8 +161,8 @@ impl TimerWithPwm for TimerX {
         self.start();
     }
 
-    // sync s end
-    // sync p begin
+    // sync start_pwm end
+    // sync pwm_cfg begin
 
     #[inline(always)]
     fn preload_output_channel_in_mode(&mut self, channel: Channel, mode: Ocm) {
@@ -191,23 +191,28 @@ impl TimerWithPwm for TimerX {
         assert!((channel as u8) < CH_NUMBER);
         match channel {
             Channel::C1 => {
-                self.ccer().modify(|_, w| w.cc1p().bit(polarity.into()));
+                self.ccer()
+                    .modify(|_, w| w.cc1p().bit(polarity == PwmPolarity::ActiveLow));
             }
             Channel::C2 => {
-                self.ccer().modify(|_, w| w.cc2p().bit(polarity.into()));
+                self.ccer()
+                    .modify(|_, w| w.cc2p().bit(polarity == PwmPolarity::ActiveLow));
             }
             Channel::C3 => {
-                self.ccer().modify(|_, w| w.cc3p().bit(polarity.into()));
+                self.ccer()
+                    .modify(|_, w| w.cc3p().bit(polarity == PwmPolarity::ActiveLow));
             }
             Channel::C4 => {
-                self.ccer().modify(|_, w| w.cc4p().bit(polarity.into()));
+                self.ccer()
+                    .modify(|_, w| w.cc4p().bit(polarity == PwmPolarity::ActiveLow));
             }
         }
     }
+
+    // sync pwm_cfg end
+    // sync pwm_ch1 begin
 }
 
-// sync p end
-// sync p_ch1 begin
 // PWM Channels ---------------------------------------------------------------
 
 impl TimerWithPwm1Ch for TimerX {
@@ -227,8 +232,8 @@ impl TimerWithPwm1Ch for TimerX {
     }
 }
 
-// sync p_ch1 end
-// sync p_ch2 begin
+// sync pwm_ch1 end
+// sync pwm_ch2 begin
 
 impl TimerWithPwm2Ch for TimerX {
     #[inline(always)]
@@ -247,8 +252,8 @@ impl TimerWithPwm2Ch for TimerX {
     }
 }
 
-// sync p_ch2 end
-// sync p_ch4 begin
+// sync pwm_ch2 end
+// sync pwm_ch4 begin
 
 impl TimerWithPwm4Ch for TimerX {
     #[inline(always)]
@@ -282,8 +287,8 @@ impl TimerWithPwm4Ch for TimerX {
     }
 }
 
-// sync p_ch4 end
-// sync m begin
+// sync pwm_ch4 end
+// sync master begin
 // Other ----------------------------------------------------------------------
 
 impl MasterTimer for TimerX {
@@ -294,7 +299,7 @@ impl MasterTimer for TimerX {
     }
 }
 
-// sync m end
+// sync master end
 // sync dir begin
 
 impl TimerDirection for TimerX {

@@ -4,14 +4,17 @@ import re
 from base import blue, green, red
 
 TABLE = {
-    "src/uart/uart.rs": "src/uart/usart.rs",
-    "src/timer/timer8.rs": "src/timer/timer1.rs",
+    "src/uart/usart2.rs": "src/uart/usart1.rs",
+    "src/uart/usart3.rs": "src/uart/usart1.rs",
+    "src/uart/uart4.rs": "src/uart/usart1.rs",
+    "src/uart/uart5.rs": "src/uart/uart4.rs",
     "src/timer/timer2.rs": "src/timer/timer1.rs",
     "src/timer/timer3.rs": "src/timer/timer2.rs",
     "src/timer/timer4.rs": "src/timer/timer2.rs",
     "src/timer/timer5.rs": "src/timer/timer2.rs",
     "src/timer/timer6.rs": "src/timer/timer1.rs",
     "src/timer/timer7.rs": "src/timer/timer6.rs",
+    "src/timer/timer8.rs": "src/timer/timer1.rs",
     "src/timer/timer15.rs": "src/timer/timer2.rs",
     "src/timer/timer16.rs": "src/timer/timer2.rs",
     "src/timer/timer17.rs": "src/timer/timer16.rs",

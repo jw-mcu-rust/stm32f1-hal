@@ -21,8 +21,7 @@ pub use crate::ringbuf::ReadChunkExt;
 pub use crate::ringbuf::WriteChunkExt;
 // pub use crate::timer::timer_1_8::TimerInit as _;
 #[cfg(any(all(feature = "stm32f103", feature = "high"), feature = "connectivity"))]
-pub use crate::uart::uart::UartInit as _;
-pub use crate::uart::usart::UartInit as _;
+pub use crate::uart::UartInit as _;
 pub use cortex_m;
 pub use cortex_m_rt;
 pub use fugit::ExtU32 as _fugit_ExtU32;

@@ -2,12 +2,14 @@
     authors = ["Jalon Wong <jalonwong@gmail.com>"]
     categories = ["embedded", "hardware-support", "no-std"]
     description = "HAL for the STM32F1 family"
+    documentation = "https://docs.rs/stm32f1-hal"
     edition = "2024"
     keywords = ["arm", "cortex-m", "stm32", "hal"]
     license = "MIT OR Apache-2.0"
-    name = "jw-stm32f1-hal"
+    name = "stm32f1-hal"
     readme = "README.md"
-    version = "0.1.0"
+    repository = "https://github.com/jw-mcu-rust/stm32f1-hal"
+    version = "0.0.1"
 
 [features]
     critical-section-single-core = ["cortex-m/critical-section-single-core"]

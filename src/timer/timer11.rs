@@ -1,4 +1,5 @@
-type TimerX = pac::TIM1;
+#![allow(unused_variables)]
+type TimerX = pac::TIM11;
 type Width = u16;
 
 // sync begin
@@ -131,8 +132,8 @@ impl GeneralTimer for TimerX {
     #[inline(always)]
     fn stop_in_debug(&mut self, state: bool) {
         let dbg = unsafe { DBG::steal() };
-        // sync dbg_t1
-        dbg.cr().modify(|_, w| w.dbg_tim1_stop().bit(state));
+        // sync dbg_t11
+        // dbg.cr().modify(|_, w| w.dbg_tim11_stop().bit(state));
         // sync dbg_end
     }
 }
@@ -152,17 +153,15 @@ impl TimerWithPwm for TimerX {
         self.disable_counter();
     }
 
-    // sync start_pwm_aoe
+    // sync start_pwm
 
     #[inline(always)]
     fn start_pwm(&mut self) {
-        // self.bdtr().modify(|_, w| w.moe().set_bit());
-        self.bdtr().modify(|_, w| w.aoe().set_bit());
         self.reset_counter();
         self.enable_counter();
     }
 
-    // sync pwm_cfg_4
+    // sync pwm_cfg_1
 
     #[inline(always)]
     fn preload_output_channel_in_mode(&mut self, channel: Channel, mode: PwmMode) {
@@ -172,18 +171,7 @@ impl TimerWithPwm for TimerX {
                 self.ccmr1_output()
                     .modify(|_, w| w.oc1pe().set_bit().oc1m().set(mode as _));
             }
-            Channel::C2 => {
-                self.ccmr1_output()
-                    .modify(|_, w| w.oc2pe().set_bit().oc2m().set(mode as _));
-            }
-            Channel::C3 => {
-                self.ccmr2_output()
-                    .modify(|_, w| w.oc3pe().set_bit().oc3m().set(mode as _));
-            }
-            Channel::C4 => {
-                self.ccmr2_output()
-                    .modify(|_, w| w.oc4pe().set_bit().oc4m().set(mode as _));
-            }
+            _ => (),
         }
     }
 
@@ -193,18 +181,7 @@ impl TimerWithPwm for TimerX {
                 self.ccer()
                     .modify(|_, w| w.cc1p().bit(polarity == PwmPolarity::ActiveLow));
             }
-            Channel::C2 => {
-                self.ccer()
-                    .modify(|_, w| w.cc2p().bit(polarity == PwmPolarity::ActiveLow));
-            }
-            Channel::C3 => {
-                self.ccer()
-                    .modify(|_, w| w.cc3p().bit(polarity == PwmPolarity::ActiveLow));
-            }
-            Channel::C4 => {
-                self.ccer()
-                    .modify(|_, w| w.cc4p().bit(polarity == PwmPolarity::ActiveLow));
-            }
+            _ => (),
         }
     }
 }
@@ -226,84 +203,6 @@ impl TimerWithPwm1Ch for TimerX {
     #[inline(always)]
     fn get_ch1_cc_value(&self) -> u32 {
         self.ccr1().read().bits()
-    }
-}
-
-// sync pwm_ch2
-
-impl TimerWithPwm2Ch for TimerX {
-    #[inline(always)]
-    fn enable_ch2(&mut self, en: bool) {
-        self.ccer().modify(|_, w| w.cc2e().bit(en));
-    }
-
-    #[inline(always)]
-    fn set_ch2_cc_value(&mut self, value: u32) {
-        unsafe { self.ccr2().write(|w| w.bits(value)) };
-    }
-
-    #[inline(always)]
-    fn get_ch2_cc_value(&self) -> u32 {
-        self.ccr2().read().bits()
-    }
-}
-
-// sync pwm_ch4
-
-impl TimerWithPwm3Ch for TimerX {
-    #[inline(always)]
-    fn enable_ch3(&mut self, en: bool) {
-        self.ccer().modify(|_, w| w.cc3e().bit(en));
-    }
-
-    #[inline(always)]
-    fn set_ch3_cc_value(&mut self, value: u32) {
-        unsafe { self.ccr3().write(|w| w.bits(value)) };
-    }
-
-    #[inline(always)]
-    fn get_ch3_cc_value(&self) -> u32 {
-        self.ccr3().read().bits()
-    }
-}
-
-impl TimerWithPwm4Ch for TimerX {
-    #[inline(always)]
-    fn enable_ch4(&mut self, en: bool) {
-        self.ccer().modify(|_, w| w.cc4e().bit(en));
-    }
-
-    #[inline(always)]
-    fn set_ch4_cc_value(&mut self, value: u32) {
-        unsafe { self.ccr4().write(|w| w.bits(value)) };
-    }
-
-    #[inline(always)]
-    fn get_ch4_cc_value(&self) -> u32 {
-        self.ccr4().read().bits()
-    }
-}
-
-// Other ----------------------------------------------------------------------
-
-// sync master_type
-type Mms = pac::tim1::cr2::MMS;
-// sync master
-impl MasterTimer for TimerX {
-    type Mms = Mms;
-    #[inline(always)]
-    fn master_mode(&mut self, mode: Self::Mms) {
-        self.cr2().modify(|_, w| w.mms().variant(mode));
-    }
-}
-
-// sync dir
-
-impl TimerDirection for TimerX {
-    #[inline(always)]
-    fn set_count_direction(&mut self, dir: CountDirection) {
-        self.cr1()
-            .modify(|_, w| w.dir().bit(dir == CountDirection::Down));
     }
 }
 

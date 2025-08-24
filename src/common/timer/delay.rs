@@ -75,3 +75,22 @@ impl<TIM: GeneralTimer, const FREQ: u32> fugit_timer::Delay<FREQ> for Delay<TIM,
         Ok(())
     }
 }
+
+// ----------------------------------------------------------------------------
+
+use embedded_hal::delay::DelayNs;
+use fugit::ExtU32Ceil;
+
+impl<TIM: GeneralTimer, const FREQ: u32> DelayNs for Delay<TIM, FREQ> {
+    fn delay_ns(&mut self, ns: u32) {
+        self.delay(ns.micros_at_least());
+    }
+
+    fn delay_us(&mut self, us: u32) {
+        self.delay(us.micros_at_least());
+    }
+
+    fn delay_ms(&mut self, ms: u32) {
+        self.delay(ms.millis_at_least());
+    }
+}

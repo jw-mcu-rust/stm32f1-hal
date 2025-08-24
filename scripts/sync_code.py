@@ -15,9 +15,15 @@ TABLE = {
     "src/timer/timer6.rs": "src/timer/timer1.rs",
     "src/timer/timer7.rs": "src/timer/timer6.rs",
     "src/timer/timer8.rs": "src/timer/timer1.rs",
-    "src/timer/timer15.rs": "src/timer/timer2.rs",
-    "src/timer/timer16.rs": "src/timer/timer2.rs",
-    "src/timer/timer17.rs": "src/timer/timer16.rs",
+    "src/timer/timer9.rs": "src/timer/timer1.rs",
+    "src/timer/timer10.rs": "src/timer/timer1.rs",
+    "src/timer/timer11.rs": "src/timer/timer10.rs",
+    "src/timer/timer12.rs": "src/timer/timer9.rs",
+    "src/timer/timer13.rs": "src/timer/timer10.rs",
+    "src/timer/timer14.rs": "src/timer/timer10.rs",
+    "src/timer/timer15.rs": "src/timer/timer9.rs",
+    "src/timer/timer16.rs": "src/timer/timer10.rs",
+    "src/timer/timer17.rs": "src/timer/timer10.rs",
 }
 BEGIN_PATTERN = re.compile(r"\/\/ sync .+\s")
 

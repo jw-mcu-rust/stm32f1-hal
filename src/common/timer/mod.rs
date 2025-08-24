@@ -2,23 +2,16 @@ pub mod pwm;
 pub use pwm::*;
 pub mod counter;
 pub use counter::*;
+pub mod fix_timer;
+pub use fix_timer::*;
+pub mod delay;
+pub use delay::*;
 
 use crate::time::Hertz;
 
-pub trait PwmTimer {
-    fn start(&mut self);
-    fn stop(&mut self);
-    fn config_freq(&mut self, count_freq: Hertz, update_freq: Hertz);
-    fn get_max_duty(&self) -> u32;
-    fn get_count_value(&self) -> u32;
-}
-
-pub trait PwmChannel {
+pub trait PwmChannel: embedded_hal::pwm::SetDutyCycle {
     fn config(&mut self, mode: PwmMode, polarity: PwmPolarity);
     fn set_enable(&mut self, en: bool);
-    fn get_max_duty(&self) -> u32;
-    /// Remember to use `get_max_duty()`
-    fn set_duty(&mut self, duty: u32);
 }
 
 // ----------------------------------------------------------------------------
@@ -37,6 +30,7 @@ pub trait GeneralTimer {
     fn read_prescaler(&self) -> u16;
     fn read_count(&self) -> u32;
     fn trigger_update(&mut self);
+    fn stop_in_debug(&mut self, state: bool);
     fn config_freq(&mut self, clock: Hertz, count_freq: Hertz, update_freq: Hertz);
 
     fn clear_interrupt_flag(&mut self, event: Event);
@@ -69,10 +63,13 @@ pub trait TimerWithPwm2Ch: TimerWithPwm1Ch {
     fn get_ch2_cc_value(&self) -> u32;
 }
 
-pub trait TimerWithPwm4Ch: TimerWithPwm2Ch {
+pub trait TimerWithPwm3Ch: TimerWithPwm2Ch {
     fn enable_ch3(&mut self, en: bool);
     fn set_ch3_cc_value(&mut self, value: u32);
     fn get_ch3_cc_value(&self) -> u32;
+}
+
+pub trait TimerWithPwm4Ch: TimerWithPwm3Ch {
     fn enable_ch4(&mut self, en: bool);
     fn set_ch4_cc_value(&mut self, value: u32);
     fn get_ch4_cc_value(&self) -> u32;

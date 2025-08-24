@@ -1,5 +1,4 @@
 type TimerX = pac::TIM15;
-const CH_NUMBER: u8 = 2;
 type Width = u16;
 
 // Do NOT manually modify the code between begin and end!
@@ -99,9 +98,7 @@ impl GeneralTimer for TimerX {
     fn config_freq(&mut self, clock: Hertz, count_freq: Hertz, update_freq: Hertz) {
         let (prescaler, arr) = freq_to_presc_arr(clock.raw(), count_freq.raw(), update_freq.raw());
         self.set_prescaler(prescaler as u16);
-        unsafe {
-            self.set_auto_reload_unchecked(arr);
-        }
+        self.set_auto_reload(arr).unwrap();
         // Trigger update event to load the registers
         self.trigger_update();
     }
@@ -132,19 +129,20 @@ impl GeneralTimer for TimerX {
     fn start_one_pulse(&mut self) {
         self.cr1().modify(|_, w| w.opm().set_bit().cen().set_bit());
     }
+
+    #[inline(always)]
+    fn stop_in_debug(&mut self, state: bool) {
+        let dbg = unsafe { DBG::steal() };
+        // sync dbg_t15
+        dbg.cr().modify(|_, w| w.dbg_tim15_stop().bit(state));
+        // sync dbg_end
+    }
 }
 
 impl GeneralTimerExt for TimerX {
     #[inline(always)]
     fn enable_preload(&mut self, b: bool) {
         self.cr1().modify(|_, w| w.arpe().bit(b));
-    }
-
-    #[inline(always)]
-    fn stop_in_debug(&mut self, dbg: &mut DBG, state: bool) {
-        // sync dbg_t15
-        dbg.cr().modify(|_, w| w.dbg_tim15_stop().bit(state));
-        // sync dbg_end
     }
 }
 
@@ -156,7 +154,7 @@ impl TimerWithPwm for TimerX {
         self.disable_counter();
     }
 
-    // sync start_pwm_t2
+    // sync start_pwm
 
     #[inline(always)]
     fn start_pwm(&mut self) {
@@ -164,10 +162,11 @@ impl TimerWithPwm for TimerX {
         self.enable_counter();
     }
 
-    // sync pwm_cfg_t15
+    // sync pwm_cfg_2
 
     #[inline(always)]
-    fn preload_output_channel_in_mode(&mut self, channel: Channel, mode: Ocm) {
+    fn preload_output_channel_in_mode(&mut self, channel: Channel, mode: PwmMode) {
+        let mode = Ocm::from(mode);
         match channel {
             Channel::C1 => {
                 self.ccmr1_output()

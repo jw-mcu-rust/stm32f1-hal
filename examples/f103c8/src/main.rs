@@ -11,7 +11,8 @@ use jw_stm32f1_hal as hal;
 use jw_stm32f1_hal::{
     Heap, Mcu,
     afio::{NONE_PIN, RemapDefault},
-    embedded_hal, embedded_io,
+    embedded_hal::{self, pwm::SetDutyCycle},
+    embedded_io,
     gpio::PinState,
     nvic_scb::PriorityGrouping,
     pac::{self, Interrupt},
@@ -70,8 +71,10 @@ fn main() -> ! {
     // let pin_rx = hal::afio::NONE_PIN;
 
     let config = uart::Config::default();
-    let uart1 = dp.USART1.constrain();
-    let (Some(uart_tx), Some(uart_rx)) = uart1.into_tx_rx((pin_tx, pin_rx), config, &mut mcu)
+    let (Some(uart_tx), Some(uart_rx)) =
+        dp.USART1
+            .constrain()
+            .into_tx_rx((pin_tx, pin_rx), config, &mut mcu)
     else {
         panic!()
     };
@@ -105,10 +108,10 @@ fn main() -> ! {
     else {
         panic!()
     };
-    bt.config_freq(1.MHz(), 20.kHz());
+    bt.config_freq(20.kHz());
 
     ch1.config(PwmMode::Mode1, PwmPolarity::ActiveHigh);
-    ch1.set_duty(ch1.get_max_duty() / 2);
+    ch1.set_duty_cycle(ch1.max_duty_cycle() / 2).ok();
 
     bt.start();
 

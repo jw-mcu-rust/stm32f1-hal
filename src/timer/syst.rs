@@ -3,9 +3,9 @@
 use super::*;
 use crate::{Mcu, time::Hertz};
 use core::ops::{Deref, DerefMut};
-use cortex_m::peripheral::SYST;
-use cortex_m::peripheral::syst::SystClkSource;
-use fugit::{MicrosDurationU32, TimerDurationU32, TimerInstantU32};
+use cortex_m::peripheral::{SYST, syst::SystClkSource};
+use embedded_hal::delay::DelayNs;
+use fugit::{ExtU32Ceil, MicrosDurationU32, TimerDurationU32, TimerInstantU32};
 
 pub struct SystemTimer {
     pub(super) syst: SYST,
@@ -28,16 +28,6 @@ impl SystemTimer {
             syst,
             clk: mcu.rcc.clocks.hclk() / 8,
         }
-    }
-
-    pub fn configure(&mut self, mcu: &Mcu) {
-        self.syst.set_clock_source(SystClkSource::Core);
-        self.clk = mcu.rcc.clocks.hclk();
-    }
-
-    pub fn configure_external(&mut self, mcu: &Mcu) {
-        self.syst.set_clock_source(SystClkSource::External);
-        self.clk = mcu.rcc.clocks.hclk() / 8;
     }
 
     pub fn release(self) -> SYST {
@@ -310,5 +300,15 @@ impl fugit_timer::Delay<1_000_000> for SysDelay {
     fn delay(&mut self, duration: MicrosDurationU32) -> Result<(), Self::Error> {
         self.delay(duration);
         Ok(())
+    }
+}
+
+impl DelayNs for SysDelay {
+    fn delay_ns(&mut self, ns: u32) {
+        self.delay(ns.nanos_at_least());
+    }
+
+    fn delay_ms(&mut self, ms: u32) {
+        self.delay(ms.millis_at_least());
     }
 }

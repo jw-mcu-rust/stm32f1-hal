@@ -98,9 +98,7 @@ impl GeneralTimer for TimerX {
     fn config_freq(&mut self, clock: Hertz, count_freq: Hertz, update_freq: Hertz) {
         let (prescaler, arr) = freq_to_presc_arr(clock.raw(), count_freq.raw(), update_freq.raw());
         self.set_prescaler(prescaler as u16);
-        unsafe {
-            self.set_auto_reload_unchecked(arr);
-        }
+        self.set_auto_reload(arr).unwrap();
         // Trigger update event to load the registers
         self.trigger_update();
     }
@@ -131,6 +129,14 @@ impl GeneralTimer for TimerX {
     fn start_one_pulse(&mut self) {
         self.cr1().modify(|_, w| w.opm().set_bit().cen().set_bit());
     }
+
+    #[inline(always)]
+    fn stop_in_debug(&mut self, state: bool) {
+        let dbg = unsafe { DBG::steal() };
+        // sync dbg_t7
+        dbg.cr().modify(|_, w| w.dbg_tim7_stop().bit(state));
+        // sync dbg_end
+    }
 }
 
 impl GeneralTimerExt for TimerX {
@@ -138,19 +144,13 @@ impl GeneralTimerExt for TimerX {
     fn enable_preload(&mut self, b: bool) {
         self.cr1().modify(|_, w| w.arpe().bit(b));
     }
-
-    #[inline(always)]
-    fn stop_in_debug(&mut self, dbg: &mut DBG, state: bool) {
-        // sync dbg_t7
-        dbg.cr().modify(|_, w| w.dbg_tim7_stop().bit(state));
-        // sync dbg_end
-    }
 }
 
-// sync master_t6
-
+// sync master_type_t6
+type Mms = pac::tim6::cr2::MMS;
+// sync master
 impl MasterTimer for TimerX {
-    type Mms = pac::tim6::cr2::MMS;
+    type Mms = Mms;
     #[inline(always)]
     fn master_mode(&mut self, mode: Self::Mms) {
         self.cr2().modify(|_, w| w.mms().variant(mode));

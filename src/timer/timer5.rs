@@ -1,5 +1,4 @@
 type TimerX = pac::TIM5;
-const CH_NUMBER: u8 = 4;
 type Width = u16;
 
 // Do NOT manually modify the code between begin and end!
@@ -99,9 +98,7 @@ impl GeneralTimer for TimerX {
     fn config_freq(&mut self, clock: Hertz, count_freq: Hertz, update_freq: Hertz) {
         let (prescaler, arr) = freq_to_presc_arr(clock.raw(), count_freq.raw(), update_freq.raw());
         self.set_prescaler(prescaler as u16);
-        unsafe {
-            self.set_auto_reload_unchecked(arr);
-        }
+        self.set_auto_reload(arr).unwrap();
         // Trigger update event to load the registers
         self.trigger_update();
     }
@@ -132,19 +129,20 @@ impl GeneralTimer for TimerX {
     fn start_one_pulse(&mut self) {
         self.cr1().modify(|_, w| w.opm().set_bit().cen().set_bit());
     }
+
+    #[inline(always)]
+    fn stop_in_debug(&mut self, state: bool) {
+        let dbg = unsafe { DBG::steal() };
+        // sync dbg_t5
+        dbg.cr().modify(|_, w| w.dbg_tim5_stop().bit(state));
+        // sync dbg_end
+    }
 }
 
 impl GeneralTimerExt for TimerX {
     #[inline(always)]
     fn enable_preload(&mut self, b: bool) {
         self.cr1().modify(|_, w| w.arpe().bit(b));
-    }
-
-    #[inline(always)]
-    fn stop_in_debug(&mut self, dbg: &mut DBG, state: bool) {
-        // sync dbg_t5
-        dbg.cr().modify(|_, w| w.dbg_tim5_stop().bit(state));
-        // sync dbg_end
     }
 }
 
@@ -156,7 +154,7 @@ impl TimerWithPwm for TimerX {
         self.disable_counter();
     }
 
-    // sync start_pwm_t2
+    // sync start_pwm
 
     #[inline(always)]
     fn start_pwm(&mut self) {
@@ -164,7 +162,7 @@ impl TimerWithPwm for TimerX {
         self.enable_counter();
     }
 
-    // sync pwm_cfg
+    // sync pwm_cfg_4
 
     #[inline(always)]
     fn preload_output_channel_in_mode(&mut self, channel: Channel, mode: PwmMode) {
@@ -252,7 +250,7 @@ impl TimerWithPwm2Ch for TimerX {
 
 // sync pwm_ch4
 
-impl TimerWithPwm4Ch for TimerX {
+impl TimerWithPwm3Ch for TimerX {
     #[inline(always)]
     fn enable_ch3(&mut self, en: bool) {
         self.ccer().modify(|_, w| w.cc3e().bit(en));
@@ -267,7 +265,9 @@ impl TimerWithPwm4Ch for TimerX {
     fn get_ch3_cc_value(&self) -> u32 {
         self.ccr3().read().bits()
     }
+}
 
+impl TimerWithPwm4Ch for TimerX {
     #[inline(always)]
     fn enable_ch4(&mut self, en: bool) {
         self.ccer().modify(|_, w| w.cc4e().bit(en));
@@ -284,11 +284,13 @@ impl TimerWithPwm4Ch for TimerX {
     }
 }
 
-// sync master_t2
 // Other ----------------------------------------------------------------------
 
+// sync master_type_t2
+type Mms = pac::tim2::cr2::MMS;
+// sync master
 impl MasterTimer for TimerX {
-    type Mms = pac::tim2::cr2::MMS;
+    type Mms = Mms;
     #[inline(always)]
     fn master_mode(&mut self, mode: Self::Mms) {
         self.cr2().modify(|_, w| w.mms().variant(mode));

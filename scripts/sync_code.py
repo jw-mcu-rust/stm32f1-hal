@@ -1,17 +1,25 @@
 import argparse
+import re
 from typing import Any
 
 from base import blue, green, red
 
-TABLE = {"src/uart/uart.rs": {"src": "src/uart/usart.rs", "marks": ["sync1", "sync2"]}}
+TABLE = {
+    "src/uart/uart.rs": {"src": "src/uart/usart.rs"},
+    "src/timer/timer8.rs": {"src": "src/timer/timer1.rs"},
+}
+BEGIN_PATTERN = re.compile(r"\/\/ sync\d* begin")
 
 
 def get_marked_code(code: str, mark: str) -> tuple[str, str, str]:
-    i = code.find(f"// {mark} begin")
+    i = code.find(mark)
+    if i < 0:
+        return ("", "", "")
+
     before = code[:i]
     code = code[i:]
-    i = code.find(f"// {mark} end")
-    i = code.find("end", i) + 3
+    end_mark = mark.replace("begin", "end")
+    i = code.find(end_mark) + len(end_mark)
     after = code[i:]
     code = code[:i]
     return (before, code, after)
@@ -25,10 +33,10 @@ def sync_code(dest: str, info: dict[str, Any], check: bool) -> bool:
     with open(dest, "r", encoding="utf-8") as f:
         output = f.read()
 
-    for mark in info["marks"]:
+    for mark in BEGIN_PATTERN.findall(src):
         (_, code1, _) = get_marked_code(src, mark)
         (before, code2, after) = get_marked_code(output, mark)
-        if code1 != code2:
+        if code2 and code1 != code2:
             synced = False
             if not check:
                 output = before + code1 + after

@@ -79,6 +79,7 @@ def write_reg_operation(d: dict, filter: str, w: Write) -> None:
                     op = f"afio.{reg}.modify_mapr({b});"
                 else:
                     continue
+                w.write(CFG_TABLE.get(peri, ""))
                 w.write(REG_TEMPLATE.format(mode=mode, peri=peri, op=op))
 
 

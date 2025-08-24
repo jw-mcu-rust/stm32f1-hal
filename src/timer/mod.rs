@@ -4,12 +4,15 @@
 
 use crate::{
     Mcu, Steal,
+    afio::{RemapMode, timer_remap::*},
     pac::DBGMCU as DBG,
     rcc::{self, Clocks},
     time::Hertz,
 };
 
 use core::convert::TryFrom;
+
+pub use crate::common::timer::*;
 
 #[cfg(feature = "rtic")]
 pub mod monotonic;
@@ -21,7 +24,6 @@ pub mod counter;
 pub use counter::*;
 pub mod syst;
 pub use syst::*;
-pub mod pwm;
 #[cfg(any(feature = "stm32f100", feature = "stm32f103", feature = "connectivity"))]
 pub mod timer1;
 #[cfg(feature = "stm32f100")]
@@ -48,9 +50,7 @@ pub mod timer8;
 
 mod impl_hal;
 
-pub use crate::common::timer::*;
-
-pub trait Instance: rcc::Enable + rcc::Reset + rcc::BusTimerClock + GeneralTimer {}
+pub trait Instance: rcc::Enable + rcc::Reset + rcc::BusTimerClock + GeneralTimerExt {}
 
 pub trait TimerInit<TIM> {
     fn constrain(self, mcu: &mut Mcu) -> Timer<TIM>;
@@ -102,7 +102,10 @@ impl<TIM: Instance + Steal> Timer<TIM> {
 
     /// Non-blocking [Counter] with dynamic precision which uses `Hertz` as Duration units
     pub fn counter_hz(self) -> CounterHz<TIM> {
-        CounterHz(self)
+        CounterHz {
+            tim: self.tim,
+            clk: self.clk,
+        }
     }
 
     /// Blocking [Delay] with custom fixed precision
@@ -163,6 +166,120 @@ impl<TIM: Instance + Steal> Timer<TIM> {
 impl<TIM: Instance + MasterTimer> Timer<TIM> {
     pub fn set_master_mode(&mut self, mode: TIM::Mms) {
         self.tim.master_mode(mode)
+    }
+}
+
+// Initialize PWM -------------------------------------------------------------
+
+impl<TIM: Instance + TimerWithPwm1Ch + Steal> Timer<TIM> {
+    pub fn into_pwm1<REMAP: RemapMode<TIM>>(
+        mut self,
+        _pin: impl TimCh1Pin<REMAP>,
+        preload: bool,
+        mcu: &mut Mcu,
+    ) -> (impl PwmTimer, impl PwmChannel) {
+        REMAP::remap(&mut mcu.afio);
+        self.tim.enable_preload(preload);
+
+        let c1 = PwmChannel1::new(unsafe { self.tim.steal() });
+
+        (self, c1)
+    }
+}
+
+impl<TIM: Instance + TimerWithPwm2Ch + Steal> Timer<TIM> {
+    pub fn into_pwm2<REMAP: RemapMode<TIM>>(
+        mut self,
+        pins: (Option<impl TimCh1Pin<REMAP>>, Option<impl TimCh2Pin<REMAP>>),
+        preload: bool,
+        mcu: &mut Mcu,
+    ) -> (
+        impl PwmTimer,
+        Option<impl PwmChannel>,
+        Option<impl PwmChannel>,
+    ) {
+        REMAP::remap(&mut mcu.afio);
+        self.tim.enable_preload(preload);
+
+        let c1 = pins
+            .0
+            .map(|_| PwmChannel1::new(unsafe { self.tim.steal() }));
+        let c2 = pins
+            .1
+            .map(|_| PwmChannel2::new(unsafe { self.tim.steal() }));
+
+        (self, c1, c2)
+    }
+}
+
+impl<TIM: Instance + TimerWithPwm4Ch + Steal> Timer<TIM> {
+    pub fn into_pwm4<REMAP: RemapMode<TIM>>(
+        mut self,
+        pins: (
+            Option<impl TimCh1Pin<REMAP>>,
+            Option<impl TimCh2Pin<REMAP>>,
+            Option<impl TimCh3Pin<REMAP>>,
+            Option<impl TimCh4Pin<REMAP>>,
+        ),
+        preload: bool,
+        mcu: &mut Mcu,
+    ) -> (
+        impl PwmTimer,
+        Option<impl PwmChannel>,
+        Option<impl PwmChannel>,
+        Option<impl PwmChannel>,
+        Option<impl PwmChannel>,
+    ) {
+        REMAP::remap(&mut mcu.afio);
+        self.tim.enable_preload(preload);
+
+        let c1 = pins
+            .0
+            .map(|_| PwmChannel1::new(unsafe { self.tim.steal() }));
+        let c2 = pins
+            .1
+            .map(|_| PwmChannel2::new(unsafe { self.tim.steal() }));
+        let c3 = pins
+            .2
+            .map(|_| PwmChannel3::new(unsafe { self.tim.steal() }));
+        let c4 = pins
+            .3
+            .map(|_| PwmChannel4::new(unsafe { self.tim.steal() }));
+
+        (self, c1, c2, c3, c4)
+    }
+}
+
+impl<TIM: Instance + TimerDirection> Timer<TIM> {
+    pub fn set_count_direction(&mut self, dir: CountDirection) {
+        self.tim.set_count_direction(dir);
+    }
+}
+
+impl<TIM: TimerWithPwm> PwmTimer for Timer<TIM> {
+    #[inline(always)]
+    fn start(&mut self) {
+        self.tim.start_pwm();
+    }
+
+    #[inline(always)]
+    fn stop(&mut self) {
+        self.tim.stop_pwm();
+    }
+
+    #[inline]
+    fn get_count_value(&self) -> u32 {
+        self.tim.read_count().into()
+    }
+
+    #[inline]
+    fn get_max_duty(&self) -> u32 {
+        (self.tim.read_auto_reload() as u32).wrapping_add(1)
+    }
+
+    #[inline]
+    fn config_freq(&mut self, count_freq: Hertz, update_freq: Hertz) {
+        self.tim.config_freq(self.clk, count_freq, update_freq);
     }
 }
 
@@ -255,63 +372,18 @@ impl<TIM: Instance + MasterTimer, const FREQ: u32> FTimer<TIM, FREQ> {
     }
 }
 
+// Release --------------------------------------------------------------------
+
+pub fn release_counter_hz<TIM: GeneralTimer>(mut counter: CounterHz<TIM>) -> Timer<TIM> {
+    // stop timer
+    counter.tim.reset_config();
+    Timer {
+        tim: counter.tim,
+        clk: counter.clk,
+    }
+}
+
 // Enumerate ------------------------------------------------------------------
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-#[repr(u8)]
-pub enum Channel {
-    C1 = 0,
-    C2 = 1,
-    C3 = 2,
-    C4 = 3,
-}
-
-impl From<u8> for Channel {
-    fn from(value: u8) -> Self {
-        match value {
-            3 => Channel::C4,
-            2 => Channel::C3,
-            1 => Channel::C2,
-            _ => Channel::C1,
-        }
-    }
-}
-
-impl From<Channel> for u8 {
-    fn from(value: Channel) -> Self {
-        value as u8
-    }
-}
-
-/// Interrupt events
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum SysEvent {
-    /// [Timer] timed out / count down ended
-    Update,
-}
-
-bitflags::bitflags! {
-    pub struct Event: u32 {
-        const Update  = 1 << 0;
-        const C1 = 1 << 1;
-        const C2 = 1 << 2;
-        const C3 = 1 << 3;
-        const C4 = 1 << 4;
-    }
-}
-
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
-pub enum Error {
-    /// Timer is disabled
-    Disabled,
-    WrongAutoReload,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum CountDirection {
-    Up,
-    Down,
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
@@ -337,28 +409,17 @@ impl From<PwmMode> for Ocm {
 
 // Utilities ------------------------------------------------------------------
 
-#[inline(always)]
-const fn compute_arr_presc(freq: u32, clock: u32) -> (u16, u32) {
-    let ticks = clock / freq;
-    let psc = (ticks - 1) / (1 << 16);
-    let arr = ticks / (psc + 1) - 1;
-    (psc as u16, arr)
-}
-
 pub fn freq_to_presc_arr(timer_clk: u32, count_freq: u32, update_freq: u32) -> (u32, u32) {
     assert!(timer_clk >= count_freq);
+    assert!(count_freq > 0);
+    assert!(update_freq > 0);
 
-    let prescaler = if count_freq > 0 {
-        timer_clk / count_freq - 1
-    } else {
-        1
-    };
+    let mut prescaler = timer_clk / count_freq - 1;
+    let period = count_freq / update_freq - 1;
 
-    let period = if update_freq > 0 {
-        count_freq / update_freq - 1
-    } else {
-        0
-    };
+    if prescaler == 0 {
+        prescaler = 1;
+    }
 
     assert!(prescaler <= 0xFFFF);
     assert!(period <= 0xFFFF);
@@ -367,66 +428,14 @@ pub fn freq_to_presc_arr(timer_clk: u32, count_freq: u32, update_freq: u32) -> (
 
 // Peripheral Traits ----------------------------------------------------------
 
-pub trait GeneralTimer {
-    type Width: Into<u32> + From<u16>;
-    fn start(&mut self);
-    fn stop(&mut self);
-    fn max_auto_reload() -> u32;
-    unsafe fn set_auto_reload_unchecked(&mut self, arr: u32);
-    fn set_auto_reload(&mut self, arr: u32) -> Result<(), Error>;
-    fn read_auto_reload(&self) -> u32;
+pub trait GeneralTimerExt: GeneralTimer {
     fn enable_preload(&mut self, b: bool);
-    fn enable_counter(&mut self);
-    fn disable_counter(&mut self);
-    fn is_counter_enabled(&self) -> bool;
-    fn reset_counter(&mut self);
-    fn set_prescaler(&mut self, psc: u16);
-    fn read_prescaler(&self) -> u16;
-    fn trigger_update(&mut self);
-    fn clear_interrupt_flag(&mut self, event: Event);
-    fn listen_interrupt(&mut self, event: Event, b: bool);
-    fn get_interrupt_flag(&self) -> Event;
-    fn read_count(&self) -> Self::Width;
-    fn start_one_pulse(&mut self);
-    fn cr1_reset(&mut self);
     fn stop_in_debug(&mut self, dbg: &mut DBG, state: bool);
 }
 
-pub trait TimerWithPwm: GeneralTimer {
-    fn start_pwm(&mut self);
-
-    fn preload_output_channel_in_mode(&mut self, channel: Channel, mode: Ocm);
-    fn set_polarity(&mut self, channel: Channel, polarity: PwmPolarity);
-}
-
-pub trait TimerWithPwm1Ch: TimerWithPwm {
-    fn enable_ch1(&mut self, en: bool);
-    fn set_ch1_cc_value(&mut self, value: u32);
-    fn get_ch1_cc_value(&self) -> u32;
-}
-
-pub trait TimerWithPwm2Ch: TimerWithPwm1Ch {
-    fn enable_ch2(&mut self, en: bool);
-    fn set_ch2_cc_value(&mut self, value: u32);
-    fn get_ch2_cc_value(&self) -> u32;
-}
-
-pub trait TimerWithPwm4Ch: TimerWithPwm2Ch {
-    fn enable_ch3(&mut self, en: bool);
-    fn set_ch3_cc_value(&mut self, value: u32);
-    fn get_ch3_cc_value(&self) -> u32;
-    fn enable_ch4(&mut self, en: bool);
-    fn set_ch4_cc_value(&mut self, value: u32);
-    fn get_ch4_cc_value(&self) -> u32;
-}
-
-pub trait MasterTimer: GeneralTimer {
+pub trait MasterTimer: GeneralTimerExt {
     type Mms;
     fn master_mode(&mut self, mode: Self::Mms);
-}
-
-pub trait TimerDirection: GeneralTimer {
-    fn set_count_direction(&mut self, dir: CountDirection);
 }
 
 // hal!(

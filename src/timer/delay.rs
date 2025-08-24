@@ -1,61 +1,8 @@
 //! Delays
 
-use super::{FTimer, Instance, SystemTimer};
+use super::{FTimer, GeneralTimer};
 use core::ops::{Deref, DerefMut};
-use fugit::{MicrosDurationU32, TimerDurationU32};
-
-/// Timer as a delay provider (SysTick by default)
-pub struct SysDelay(SystemTimer);
-
-impl Deref for SysDelay {
-    type Target = SystemTimer;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for SysDelay {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl SysDelay {
-    /// Releases the timer resource
-    pub fn release(self) -> SystemTimer {
-        self.0
-    }
-}
-
-impl SystemTimer {
-    pub fn delay(self) -> SysDelay {
-        SysDelay(self)
-    }
-}
-
-impl SysDelay {
-    pub fn delay(&mut self, us: MicrosDurationU32) {
-        // The SysTick Reload Value register supports values between 1 and 0x00FFFFFF.
-        const MAX_RVR: u32 = 0x00FF_FFFF;
-
-        let mut total_rvr = us.ticks() * (self.clk.raw() / 1_000_000);
-
-        while total_rvr != 0 {
-            let current_rvr = total_rvr.min(MAX_RVR);
-
-            self.syst.set_reload(current_rvr);
-            self.syst.clear_current();
-            self.syst.enable_counter();
-
-            // Update the tracking variable while we are waiting...
-            total_rvr -= current_rvr;
-
-            while !self.syst.has_wrapped() {}
-
-            self.syst.disable_counter();
-        }
-    }
-}
+use fugit::TimerDurationU32;
 
 /// Periodic non-blocking timer that imlements [embedded_hal_02::blocking::delay] traits
 pub struct Delay<TIM, const FREQ: u32>(pub(super) FTimer<TIM, FREQ>);
@@ -81,7 +28,7 @@ pub type DelayUs<TIM> = Delay<TIM, 1_000_000>;
 /// NOTE: don't use this if your system frequency more than 65 MHz
 pub type DelayMs<TIM> = Delay<TIM, 1_000>;
 
-impl<TIM: Instance, const FREQ: u32> Delay<TIM, FREQ> {
+impl<TIM: GeneralTimer, const FREQ: u32> Delay<TIM, FREQ> {
     /// Sleep for given time
     pub fn delay(&mut self, time: TimerDurationU32<FREQ>) {
         let mut ticks = time.ticks().max(1) - 1;
@@ -115,24 +62,15 @@ impl<TIM: Instance, const FREQ: u32> Delay<TIM, FREQ> {
     /// Releases the TIM peripheral
     pub fn release(mut self) -> FTimer<TIM, FREQ> {
         // stop counter
-        self.tim.cr1_reset();
+        self.tim.reset_config();
         self.0
     }
 }
 
-impl<TIM: Instance, const FREQ: u32> fugit_timer::Delay<FREQ> for Delay<TIM, FREQ> {
+impl<TIM: GeneralTimer, const FREQ: u32> fugit_timer::Delay<FREQ> for Delay<TIM, FREQ> {
     type Error = core::convert::Infallible;
 
     fn delay(&mut self, duration: TimerDurationU32<FREQ>) -> Result<(), Self::Error> {
-        self.delay(duration);
-        Ok(())
-    }
-}
-
-impl fugit_timer::Delay<1_000_000> for SysDelay {
-    type Error = core::convert::Infallible;
-
-    fn delay(&mut self, duration: MicrosDurationU32) -> Result<(), Self::Error> {
         self.delay(duration);
         Ok(())
     }

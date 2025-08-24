@@ -1,5 +1,6 @@
 type TimerX = pac::TIM8;
 const CH_NUMBER: u8 = 4;
+type Width = u16;
 
 // Do NOT manually modify the code between begin and end!
 // It's synced by scripts/sync_code.py.
@@ -17,23 +18,34 @@ impl TimerInit<TimerX> for TimerX {
 }
 
 impl GeneralTimer for TimerX {
-    type Width = u16;
+    #[inline(always)]
+    fn reset_config(&mut self) {
+        self.cr1().reset();
+    }
 
     #[inline(always)]
-    fn start(&mut self) {
-        self.cnt().reset();
+    fn enable_counter(&mut self) {
         self.cr1().modify(|_, w| w.cen().set_bit());
     }
 
     #[inline(always)]
-    fn stop(&mut self) {
-        self.cnt().reset();
+    fn disable_counter(&mut self) {
         self.cr1().modify(|_, w| w.cen().clear_bit());
     }
 
     #[inline(always)]
+    fn is_counter_enabled(&self) -> bool {
+        self.cr1().read().cen().is_enabled()
+    }
+
+    #[inline(always)]
+    fn reset_counter(&mut self) {
+        self.cnt().reset();
+    }
+
+    #[inline(always)]
     fn max_auto_reload() -> u32 {
-        Self::Width::MAX as u32
+        Width::MAX as u32
     }
 
     #[inline(always)]
@@ -60,31 +72,6 @@ impl GeneralTimer for TimerX {
     }
 
     #[inline(always)]
-    fn enable_preload(&mut self, b: bool) {
-        self.cr1().modify(|_, w| w.arpe().bit(b));
-    }
-
-    #[inline(always)]
-    fn enable_counter(&mut self) {
-        self.cr1().modify(|_, w| w.cen().set_bit());
-    }
-
-    #[inline(always)]
-    fn disable_counter(&mut self) {
-        self.cr1().modify(|_, w| w.cen().clear_bit());
-    }
-
-    #[inline(always)]
-    fn is_counter_enabled(&self) -> bool {
-        self.cr1().read().cen().is_enabled()
-    }
-
-    #[inline(always)]
-    fn reset_counter(&mut self) {
-        self.cnt().reset();
-    }
-
-    #[inline(always)]
     fn set_prescaler(&mut self, psc: u16) {
         self.psc().write(|w| w.psc().set(psc));
     }
@@ -95,12 +82,28 @@ impl GeneralTimer for TimerX {
     }
 
     #[inline(always)]
+    fn read_count(&self) -> u32 {
+        self.cnt().read().bits() as u32
+    }
+
+    #[inline(always)]
     fn trigger_update(&mut self) {
         // Sets the URS bit to prevent an interrupt from being triggered by
         // the UG bit
         self.cr1().modify(|_, w| w.urs().set_bit());
         self.egr().write(|w| w.ug().set_bit());
         self.cr1().modify(|_, w| w.urs().clear_bit());
+    }
+
+    #[inline]
+    fn config_freq(&mut self, clock: Hertz, count_freq: Hertz, update_freq: Hertz) {
+        let (prescaler, arr) = freq_to_presc_arr(clock.raw(), count_freq.raw(), update_freq.raw());
+        self.set_prescaler(prescaler as u16);
+        unsafe {
+            self.set_auto_reload_unchecked(arr);
+        }
+        // Trigger update event to load the registers
+        self.trigger_update();
     }
 
     #[inline(always)]
@@ -126,18 +129,15 @@ impl GeneralTimer for TimerX {
     }
 
     #[inline(always)]
-    fn read_count(&self) -> Self::Width {
-        self.cnt().read().bits() as Self::Width
-    }
-
-    #[inline(always)]
     fn start_one_pulse(&mut self) {
         self.cr1().modify(|_, w| w.opm().set_bit().cen().set_bit());
     }
+}
 
+impl GeneralTimerExt for TimerX {
     #[inline(always)]
-    fn cr1_reset(&mut self) {
-        self.cr1().reset();
+    fn enable_preload(&mut self, b: bool) {
+        self.cr1().modify(|_, w| w.arpe().bit(b));
     }
 
     #[inline(always)]
@@ -152,19 +152,25 @@ impl GeneralTimer for TimerX {
 // PWM ------------------------------------------------------------------------
 
 impl TimerWithPwm for TimerX {
+    fn stop_pwm(&mut self) {
+        self.disable_counter();
+    }
+
     // sync start_pwm
 
     #[inline(always)]
     fn start_pwm(&mut self) {
         // self.bdtr().modify(|_, w| w.moe().set_bit());
         self.bdtr().modify(|_, w| w.aoe().set_bit());
-        self.start();
+        self.reset_counter();
+        self.enable_counter();
     }
 
     // sync pwm_cfg
 
     #[inline(always)]
-    fn preload_output_channel_in_mode(&mut self, channel: Channel, mode: Ocm) {
+    fn preload_output_channel_in_mode(&mut self, channel: Channel, mode: PwmMode) {
+        let mode = Ocm::from(mode);
         match channel {
             Channel::C1 => {
                 self.ccmr1_output()

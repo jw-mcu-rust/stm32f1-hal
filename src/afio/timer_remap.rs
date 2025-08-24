@@ -129,18 +129,21 @@ impl TimCh2Pin<RemapFull<TIM9>> for PE6<Alternate<PushPull>> {}
 
 // Register operation ------------
 
+#[cfg(any(feature = "stm32f100", feature = "stm32f103", feature = "connectivity"))]
 impl RemapMode<TIM1> for RemapDefault<TIM1> {
     fn remap(afio: &mut Afio) {
         afio.mapr
             .modify_mapr(unsafe { |_, w| w.tim1_remap().bits(0b00) });
     }
 }
+#[cfg(any(feature = "stm32f100", feature = "stm32f103", feature = "connectivity"))]
 impl RemapMode<TIM1> for RemapFull<TIM1> {
     fn remap(afio: &mut Afio) {
         afio.mapr
             .modify_mapr(unsafe { |_, w| w.tim1_remap().bits(0b11) });
     }
 }
+#[cfg(any(feature = "stm32f100", feature = "stm32f103", feature = "connectivity"))]
 impl RemapMode<TIM1> for RemapPartial1<TIM1> {
     fn remap(afio: &mut Afio) {
         afio.mapr
@@ -232,11 +235,13 @@ impl RemapMode<TIM3> for RemapPartial1<TIM3> {
             .modify_mapr(unsafe { |_, w| w.tim3_remap().bits(0b10) });
     }
 }
+#[cfg(feature = "medium")]
 impl RemapMode<TIM4> for RemapDefault<TIM4> {
     fn remap(afio: &mut Afio) {
         afio.mapr.modify_mapr(|_, w| w.tim4_remap().clear_bit());
     }
 }
+#[cfg(feature = "medium")]
 impl RemapMode<TIM4> for RemapFull<TIM4> {
     fn remap(afio: &mut Afio) {
         afio.mapr.modify_mapr(|_, w| w.tim4_remap().set_bit());

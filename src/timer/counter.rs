@@ -94,7 +94,7 @@ impl<TIM: Instance> CounterHz<TIM> {
 
     /// Retrieves the value of the auto-reload register.
     pub fn arr(&self) -> u16 {
-        TIM::read_auto_reload() as u16
+        self.tim.read_auto_reload() as u16
     }
 
     /// Resets the counter

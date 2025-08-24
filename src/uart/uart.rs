@@ -5,7 +5,7 @@ use crate::pac::uart4::{self, cr1};
 
 // Do NOT manually modify the code between begin and end!
 // It's synced by scripts/sync_code.py.
-// sync1 begin
+// sync 1 begin
 
 use crate::{
     Mcu, Steal,
@@ -105,7 +105,7 @@ impl<REG: RegisterBlock + Steal> Uart<REG> {
         });
     }
 
-    // sync1 end
+    // sync 1 end
 
     fn set_stop_bits(&mut self, bits: StopBits) {
         use pac::uart4::cr2::STOP;
@@ -121,7 +121,7 @@ impl<REG: RegisterBlock + Steal> Uart<REG> {
     }
 }
 
-// sync2 begin
+// sync 2 begin
 
 // Implement Peripheral -------------------------------------------------------
 
@@ -260,7 +260,7 @@ impl<REG: RegisterBlock> UartPeriph for Uart<REG> {
     }
 }
 
-// sync2 end
+// sync 2 end
 
 impl_uart_init!(pac::UART4, pac::UART5);
 wrap_trait_deref!(

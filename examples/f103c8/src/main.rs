@@ -90,7 +90,7 @@ fn main() -> ! {
     let mut led = gpiob
         .pb0
         .into_open_drain_output_with_state(&mut gpiob.crl, PinState::High);
-    let mut timer = cp.SYST.counter_hz(&mcu.rcc.clocks);
+    let mut timer = cp.SYST.counter_hz(&mcu);
     let freq = 100.Hz();
     timer.start(freq).unwrap();
     let mut led_task = LedTask::new(led, freq.raw());
@@ -98,21 +98,20 @@ fn main() -> ! {
     // PWM --------------------------------------
 
     let c1 = gpioa.pa8.into_alternate_push_pull(&mut gpioa.crh);
-    let (mut bt, Some(mut ch1), _, _, _) = dp.TIM1.constrain().into_pwm::<RemapDefault<_>>(
-        (Some(c1), NONE_PIN, NONE_PIN, NONE_PIN),
-        CountDirection::Up,
-        true,
-        &mut mcu,
-    ) else {
+    let (mut bt, Some(mut ch1), _, _, _) =
+        dp.TIM1.constrain(&mut mcu).into_pwm4::<RemapDefault<_>>(
+            (Some(c1), NONE_PIN, NONE_PIN, NONE_PIN),
+            CountDirection::Up,
+            true,
+            &mut mcu,
+        )
+    else {
         panic!()
     };
     bt.config_freq(1.MHz(), 20.kHz());
 
-    ch1.config(
-        PwmMode::Mode1,
-        PwmPolarity::ActiveHigh,
-        bt.get_max_duty() / 2,
-    );
+    ch1.config(PwmMode::Mode1, PwmPolarity::ActiveHigh);
+    ch1.set_duty(ch1.get_max_duty() / 2);
 
     bt.start();
 

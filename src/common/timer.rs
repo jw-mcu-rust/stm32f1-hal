@@ -9,8 +9,9 @@ pub trait PwmTimer {
 }
 
 pub trait PwmChannel {
-    fn config(&mut self, mode: PwmMode, polarity: PwmPolarity, duty: u32);
+    fn config(&mut self, mode: PwmMode, polarity: PwmPolarity);
     fn set_enable(&mut self, en: bool);
+    fn get_max_duty(&self) -> u32;
     /// Remember to use `get_max_duty()`
     fn set_duty(&mut self, duty: u32);
 }

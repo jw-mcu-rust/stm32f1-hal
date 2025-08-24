@@ -1,14 +1,21 @@
 import argparse
 import re
-from typing import Any
 
 from base import blue, green, red
 
 TABLE = {
-    "src/uart/uart.rs": {"src": "src/uart/usart.rs"},
-    "src/timer/timer8.rs": {"src": "src/timer/timer1.rs"},
+    "src/uart/uart.rs": "src/uart/usart.rs",
+    "src/timer/timer8.rs": "src/timer/timer1.rs",
+    "src/timer/timer2.rs": "src/timer/timer1.rs",
+    "src/timer/timer3.rs": "src/timer/timer2.rs",
+    "src/timer/timer4.rs": "src/timer/timer2.rs",
+    "src/timer/timer5.rs": "src/timer/timer2.rs",
+    "src/timer/timer6.rs": "src/timer/timer1.rs",
+    "src/timer/timer15.rs": "src/timer/timer1.rs",
+    "src/timer/timer16.rs": "src/timer/timer1.rs",
+    "src/timer/timer17.rs": "src/timer/timer1.rs",
 }
-BEGIN_PATTERN = re.compile(r"\/\/ sync\d* begin")
+BEGIN_PATTERN = re.compile(r"\/\/ sync \S+ begin")
 
 
 def get_marked_code(code: str, mark: str) -> tuple[str, str, str]:
@@ -25,10 +32,10 @@ def get_marked_code(code: str, mark: str) -> tuple[str, str, str]:
     return (before, code, after)
 
 
-def sync_code(dest: str, info: dict[str, Any], check: bool) -> bool:
+def sync_code(dest: str, src: str, check: bool) -> bool:
     synced = True
 
-    with open(info["src"], "r", encoding="utf-8") as f:
+    with open(src, "r", encoding="utf-8") as f:
         src = f.read()
     with open(dest, "r", encoding="utf-8") as f:
         output = f.read()
@@ -55,8 +62,8 @@ def sync_code(dest: str, info: dict[str, Any], check: bool) -> bool:
 
 def sync_all(check: bool = False) -> bool:
     ok = True
-    for dest, info in TABLE.items():
-        if not sync_code(dest, info, check):
+    for dest, src in TABLE.items():
+        if not sync_code(dest, src, check):
             ok = False
     return ok
 

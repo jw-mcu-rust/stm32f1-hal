@@ -75,7 +75,6 @@ pub struct Timer<TIM> {
     clk: Hertz,
 }
 
-#[allow(private_bounds)]
 impl<TIM: Instance + Steal> Timer<TIM> {
     /// Initialize timer
     pub fn new(tim: TIM, mcu: &mut Mcu) -> Self {
@@ -187,16 +186,17 @@ impl<TIM: Instance + TimerDirection> Timer<TIM> {
 
 // Initialize PWM -------------------------------------------------------------
 
-#[allow(private_bounds)]
 impl<TIM: Instance + TimerWithPwm1Ch + Steal> Timer<TIM> {
     pub fn into_pwm1<REMAP: RemapMode<TIM>>(
         mut self,
         _pin: impl TimCh1Pin<REMAP>,
+        update_freq: Hertz,
         preload: bool,
         mcu: &mut Mcu,
     ) -> (PwmTimer<TIM>, impl PwmChannel) {
         REMAP::remap(&mut mcu.afio);
         self.tim.enable_preload(preload);
+        self.tim.config_freq(self.clk, update_freq);
 
         let c1 = PwmChannel1::new(unsafe { self.tim.steal() });
         let t = PwmTimer::new(self.tim, self.clk);
@@ -204,11 +204,11 @@ impl<TIM: Instance + TimerWithPwm1Ch + Steal> Timer<TIM> {
     }
 }
 
-#[allow(private_bounds)]
 impl<TIM: Instance + TimerWithPwm2Ch + Steal> Timer<TIM> {
     pub fn into_pwm2<REMAP: RemapMode<TIM>>(
         mut self,
         pins: (Option<impl TimCh1Pin<REMAP>>, Option<impl TimCh2Pin<REMAP>>),
+        update_freq: Hertz,
         preload: bool,
         mcu: &mut Mcu,
     ) -> (
@@ -218,6 +218,7 @@ impl<TIM: Instance + TimerWithPwm2Ch + Steal> Timer<TIM> {
     ) {
         REMAP::remap(&mut mcu.afio);
         self.tim.enable_preload(preload);
+        self.tim.config_freq(self.clk, update_freq);
 
         let c1 = pins
             .0
@@ -230,7 +231,6 @@ impl<TIM: Instance + TimerWithPwm2Ch + Steal> Timer<TIM> {
     }
 }
 
-#[allow(private_bounds)]
 impl<TIM: Instance + TimerWithPwm4Ch + Steal> Timer<TIM> {
     pub fn into_pwm4<REMAP: RemapMode<TIM>>(
         mut self,
@@ -240,6 +240,7 @@ impl<TIM: Instance + TimerWithPwm4Ch + Steal> Timer<TIM> {
             Option<impl TimCh3Pin<REMAP>>,
             Option<impl TimCh4Pin<REMAP>>,
         ),
+        update_freq: Hertz,
         preload: bool,
         mcu: &mut Mcu,
     ) -> (
@@ -251,6 +252,7 @@ impl<TIM: Instance + TimerWithPwm4Ch + Steal> Timer<TIM> {
     ) {
         REMAP::remap(&mut mcu.afio);
         self.tim.enable_preload(preload);
+        self.tim.config_freq(self.clk, update_freq);
 
         let c1 = pins
             .0
@@ -314,15 +316,10 @@ impl From<PwmMode> for Ocm {
 
 // Utilities ------------------------------------------------------------------
 
-fn freq_to_presc_arr(timer_clk: u32, count_freq: u32, update_freq: u32) -> (u32, u32) {
-    assert!(timer_clk >= count_freq);
-    assert!(count_freq > 0);
-    assert!(update_freq > 0);
-
-    let prescaler = timer_clk / count_freq - 1;
-    let arr = count_freq / update_freq - 1;
-
-    assert!(prescaler <= 0xFFFF);
+const fn compute_prescaler_arr(timer_clk: u32, update_freq: u32) -> (u32, u32) {
+    let ticks = timer_clk / update_freq;
+    let prescaler = (ticks - 1) / (1 << 16);
+    let arr = ticks / (prescaler + 1) - 1;
     (prescaler, arr)
 }
 

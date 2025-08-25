@@ -60,7 +60,8 @@ def sync_code(dest: str, src: str, check: bool) -> bool:
         last_mark = mark
 
     if synced:
-        print(f"{blue('Synced')}: {dest}", flush=True)
+        if check:
+            print(f"{blue('Synced')}: {dest}", flush=True)
     elif check:
         print(f"{red('Unsynced')}: {dest}", flush=True)
     else:

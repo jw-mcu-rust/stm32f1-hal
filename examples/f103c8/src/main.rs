@@ -102,13 +102,12 @@ fn main() -> ! {
 
     let c1 = gpioa.pa8.into_alternate_push_pull(&mut gpioa.crh);
     let mut tim1 = dp.TIM1.constrain(&mut mcu);
-    tim1.set_count_direction(CountDirection::Up);
+    tim1.set_count_direction(CountDirection::Up); // Optional
     let (mut bt, Some(mut ch1), _) =
-        tim1.into_pwm2::<RemapDefault<_>>((Some(c1), NONE_PIN), true, &mut mcu)
+        tim1.into_pwm2::<RemapDefault<_>>((Some(c1), NONE_PIN), 20.kHz(), true, &mut mcu)
     else {
         panic!()
     };
-    bt.config_freq(20.kHz());
 
     ch1.config(PwmMode::Mode1, PwmPolarity::ActiveHigh);
     ch1.set_duty_cycle(ch1.max_duty_cycle() / 2).ok();

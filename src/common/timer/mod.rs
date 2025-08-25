@@ -31,7 +31,7 @@ pub trait GeneralTimer {
     fn read_count(&self) -> u32;
     fn trigger_update(&mut self);
     fn stop_in_debug(&mut self, state: bool);
-    fn config_freq(&mut self, clock: Hertz, count_freq: Hertz, update_freq: Hertz);
+    fn config_freq(&mut self, clock: Hertz, update_freq: Hertz);
 
     fn clear_interrupt_flag(&mut self, event: Event);
     fn listen_interrupt(&mut self, event: Event, b: bool);

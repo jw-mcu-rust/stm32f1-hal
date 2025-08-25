@@ -19,7 +19,7 @@ impl<TIM: GeneralTimer> CounterHz<TIM> {
         self.tim.reset_counter();
 
         let clk = self.clk;
-        self.tim.config_freq(clk, clk, timeout);
+        self.tim.config_freq(clk, timeout);
 
         // start counter
         self.tim.enable_counter();

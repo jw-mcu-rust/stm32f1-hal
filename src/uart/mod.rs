@@ -30,7 +30,6 @@ pub struct Uart<U> {
     uart: U,
 }
 
-#[allow(private_bounds)]
 impl<U: UartPeriphExt + Steal> Uart<U> {
     pub fn into_tx_rx<REMAP: RemapMode<U>>(
         mut self,

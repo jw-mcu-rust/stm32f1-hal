@@ -35,7 +35,7 @@ def main() -> int:
             cmd.append("check")
 
         if opts.features is None:
-            cmd.append(f"--features=stm32f103,xG")
+            cmd.append(f"--features=stm32f103,xG,rtic")
         else:
             print(opts.features)
             for feature in opts.features:

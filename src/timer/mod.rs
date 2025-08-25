@@ -271,6 +271,14 @@ pub fn destroy_counter_hz<TIM: GeneralTimer>(mut counter: CounterHz<TIM>) -> Tim
     }
 }
 
+#[cfg(feature = "rtic")]
+pub fn destroy_mono_timer<TIM: GeneralTimer, const FREQ: u32>(
+    mut timer: MonoTimer<TIM, FREQ>,
+) -> FTimer<TIM, FREQ> {
+    timer.tim.reset_config();
+    timer.timer
+}
+
 // Enumerate ------------------------------------------------------------------
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

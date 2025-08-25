@@ -6,6 +6,7 @@
         "critical-section-single-core",
         "stm32f103",
         "xG",
+        "rtic"
     ],
     "editor.formatOnSave": true,
     "files.exclude": {

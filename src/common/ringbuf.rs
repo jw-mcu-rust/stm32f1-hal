@@ -1,5 +1,5 @@
 pub use rtrb::{
-    Consumer, Producer, RingBuffer,
+    self, Consumer, Producer, RingBuffer,
     chunks::{ReadChunk, WriteChunkUninit},
 };
 

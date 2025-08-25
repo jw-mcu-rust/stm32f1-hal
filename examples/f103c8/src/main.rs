@@ -5,12 +5,12 @@
 #![allow(unused_mut)]
 
 use core::{mem::MaybeUninit, panic::PanicInfo};
-use cortex_m::asm;
-use cortex_m_rt::entry;
 use stm32f1_hal as hal;
 use stm32f1_hal::{
     Heap, Mcu,
     afio::{NONE_PIN, RemapDefault},
+    cortex_m::asm,
+    cortex_m_rt::entry,
     embedded_hal::{self, pwm::SetDutyCycle},
     embedded_io,
     gpio::PinState,

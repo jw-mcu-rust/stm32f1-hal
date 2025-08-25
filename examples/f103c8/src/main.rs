@@ -73,7 +73,7 @@ fn main() -> ! {
     let config = uart::Config::default();
     let (Some(uart_tx), Some(uart_rx)) =
         dp.USART1
-            .constrain()
+            .constrain(&mut mcu)
             .into_tx_rx((pin_tx, pin_rx), config, &mut mcu)
     else {
         panic!()

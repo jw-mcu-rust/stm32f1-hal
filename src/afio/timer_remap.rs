@@ -53,19 +53,25 @@ impl TimCh2Pin<RemapPartial1<TIM1>> for PA9<Alternate<PushPull>> {}
 impl TimCh3Pin<RemapPartial1<TIM1>> for PA10<Alternate<PushPull>> {}
 #[cfg(any(feature = "stm32f100", feature = "stm32f103", feature = "connectivity"))]
 impl TimCh4Pin<RemapPartial1<TIM1>> for PA11<Alternate<PushPull>> {}
+#[cfg(feature = "xl")]
 impl TimCh1Pin<RemapDefault<TIM10>> for PB8<Alternate<PushPull>> {}
-#[cfg(any(feature = "xl", feature = "high"))]
+#[cfg(feature = "xl")]
 impl TimCh1Pin<RemapFull<TIM10>> for PF6<Alternate<PushPull>> {}
+#[cfg(feature = "xl")]
 impl TimCh1Pin<RemapDefault<TIM11>> for PB9<Alternate<PushPull>> {}
-#[cfg(any(feature = "xl", feature = "high"))]
+#[cfg(feature = "xl")]
 impl TimCh1Pin<RemapFull<TIM11>> for PF7<Alternate<PushPull>> {}
+#[cfg(any(feature = "xl", all(feature = "stm32f100", feature = "high",)))]
 impl TimCh1Pin<RemapDefault<TIM12>> for PB14<Alternate<PushPull>> {}
+#[cfg(any(feature = "xl", all(feature = "stm32f100", feature = "high",)))]
 impl TimCh2Pin<RemapDefault<TIM12>> for PB15<Alternate<PushPull>> {}
+#[cfg(any(feature = "xl", all(feature = "stm32f100", feature = "high",)))]
 impl TimCh1Pin<RemapDefault<TIM13>> for PA6<Alternate<PushPull>> {}
-#[cfg(any(feature = "xl", feature = "high"))]
+#[cfg(any(feature = "xl", all(feature = "stm32f100", feature = "high",)))]
 impl TimCh1Pin<RemapFull<TIM13>> for PF8<Alternate<PushPull>> {}
+#[cfg(any(feature = "xl", all(feature = "stm32f100", feature = "high",)))]
 impl TimCh1Pin<RemapDefault<TIM14>> for PA7<Alternate<PushPull>> {}
-#[cfg(any(feature = "xl", feature = "high"))]
+#[cfg(any(feature = "xl", all(feature = "stm32f100", feature = "high",)))]
 impl TimCh1Pin<RemapFull<TIM14>> for PF9<Alternate<PushPull>> {}
 impl TimCh1Pin<RemapDefault<TIM2>> for PA0<Alternate<PushPull>> {}
 impl TimCh2Pin<RemapDefault<TIM2>> for PA1<Alternate<PushPull>> {}
@@ -111,20 +117,35 @@ impl TimCh2Pin<RemapFull<TIM4>> for PD13<Alternate<PushPull>> {}
 impl TimCh3Pin<RemapFull<TIM4>> for PD14<Alternate<PushPull>> {}
 #[cfg(feature = "medium")]
 impl TimCh4Pin<RemapFull<TIM4>> for PD15<Alternate<PushPull>> {}
+#[cfg(any(feature = "high", feature = "connectivity"))]
 impl TimCh1Pin<RemapDefault<TIM5>> for PA0<Alternate<PushPull>> {}
+#[cfg(any(feature = "high", feature = "connectivity"))]
 impl TimCh2Pin<RemapDefault<TIM5>> for PA1<Alternate<PushPull>> {}
+#[cfg(any(feature = "high", feature = "connectivity"))]
 impl TimCh3Pin<RemapDefault<TIM5>> for PA2<Alternate<PushPull>> {}
+#[cfg(any(feature = "high", feature = "connectivity"))]
 impl TimCh4Pin<RemapDefault<TIM5>> for PA3<Alternate<PushPull>> {}
+#[cfg(any(feature = "high", feature = "connectivity"))]
 impl TimCh1Pin<RemapFull<TIM5>> for PA0<Alternate<PushPull>> {}
+#[cfg(any(feature = "high", feature = "connectivity"))]
 impl TimCh2Pin<RemapFull<TIM5>> for PA1<Alternate<PushPull>> {}
+#[cfg(any(feature = "high", feature = "connectivity"))]
 impl TimCh3Pin<RemapFull<TIM5>> for PA2<Alternate<PushPull>> {}
+#[cfg(all(feature = "stm32f103", feature = "high"))]
 impl TimCh1Pin<RemapDefault<TIM8>> for PC6<Alternate<PushPull>> {}
+#[cfg(all(feature = "stm32f103", feature = "high"))]
 impl TimCh2Pin<RemapDefault<TIM8>> for PC7<Alternate<PushPull>> {}
+#[cfg(all(feature = "stm32f103", feature = "high"))]
 impl TimCh3Pin<RemapDefault<TIM8>> for PC8<Alternate<PushPull>> {}
+#[cfg(all(feature = "stm32f103", feature = "high"))]
 impl TimCh4Pin<RemapDefault<TIM8>> for PC9<Alternate<PushPull>> {}
+#[cfg(feature = "xl")]
 impl TimCh1Pin<RemapDefault<TIM9>> for PA2<Alternate<PushPull>> {}
+#[cfg(feature = "xl")]
 impl TimCh2Pin<RemapDefault<TIM9>> for PA3<Alternate<PushPull>> {}
+#[cfg(feature = "xl")]
 impl TimCh1Pin<RemapFull<TIM9>> for PE5<Alternate<PushPull>> {}
+#[cfg(feature = "xl")]
 impl TimCh2Pin<RemapFull<TIM9>> for PE6<Alternate<PushPull>> {}
 
 // Register operation ------------
@@ -150,44 +171,53 @@ impl RemapMode<TIM1> for RemapPartial1<TIM1> {
             .modify_mapr(unsafe { |_, w| w.tim1_remap().bits(0b01) });
     }
 }
+#[cfg(feature = "xl")]
 impl RemapMode<TIM10> for RemapDefault<TIM10> {
     fn remap(afio: &mut Afio) {
         afio.mapr2.modify_mapr(|_, w| w.tim10_remap().clear_bit());
     }
 }
+#[cfg(feature = "xl")]
 impl RemapMode<TIM10> for RemapFull<TIM10> {
     fn remap(afio: &mut Afio) {
         afio.mapr2.modify_mapr(|_, w| w.tim10_remap().set_bit());
     }
 }
+#[cfg(feature = "xl")]
 impl RemapMode<TIM11> for RemapDefault<TIM11> {
     fn remap(afio: &mut Afio) {
         afio.mapr2.modify_mapr(|_, w| w.tim11_remap().clear_bit());
     }
 }
+#[cfg(feature = "xl")]
 impl RemapMode<TIM11> for RemapFull<TIM11> {
     fn remap(afio: &mut Afio) {
         afio.mapr2.modify_mapr(|_, w| w.tim11_remap().set_bit());
     }
 }
+#[cfg(any(feature = "xl", all(feature = "stm32f100", feature = "high",)))]
 impl RemapMode<TIM12> for RemapDefault<TIM12> {
     fn remap(afio: &mut Afio) {}
 }
+#[cfg(any(feature = "xl", all(feature = "stm32f100", feature = "high",)))]
 impl RemapMode<TIM13> for RemapDefault<TIM13> {
     fn remap(afio: &mut Afio) {
         afio.mapr2.modify_mapr(|_, w| w.tim13_remap().clear_bit());
     }
 }
+#[cfg(any(feature = "xl", all(feature = "stm32f100", feature = "high",)))]
 impl RemapMode<TIM13> for RemapFull<TIM13> {
     fn remap(afio: &mut Afio) {
         afio.mapr2.modify_mapr(|_, w| w.tim13_remap().set_bit());
     }
 }
+#[cfg(any(feature = "xl", all(feature = "stm32f100", feature = "high",)))]
 impl RemapMode<TIM14> for RemapDefault<TIM14> {
     fn remap(afio: &mut Afio) {
         afio.mapr2.modify_mapr(|_, w| w.tim14_remap().clear_bit());
     }
 }
+#[cfg(any(feature = "xl", all(feature = "stm32f100", feature = "high",)))]
 impl RemapMode<TIM14> for RemapFull<TIM14> {
     fn remap(afio: &mut Afio) {
         afio.mapr2.modify_mapr(|_, w| w.tim14_remap().set_bit());
@@ -247,24 +277,29 @@ impl RemapMode<TIM4> for RemapFull<TIM4> {
         afio.mapr.modify_mapr(|_, w| w.tim4_remap().set_bit());
     }
 }
+#[cfg(any(feature = "high", feature = "connectivity"))]
 impl RemapMode<TIM5> for RemapDefault<TIM5> {
     fn remap(afio: &mut Afio) {
         afio.mapr.modify_mapr(|_, w| w.tim5ch4_iremap().clear_bit());
     }
 }
+#[cfg(any(feature = "high", feature = "connectivity"))]
 impl RemapMode<TIM5> for RemapFull<TIM5> {
     fn remap(afio: &mut Afio) {
         afio.mapr.modify_mapr(|_, w| w.tim5ch4_iremap().set_bit());
     }
 }
+#[cfg(all(feature = "stm32f103", feature = "high"))]
 impl RemapMode<TIM8> for RemapDefault<TIM8> {
     fn remap(afio: &mut Afio) {}
 }
+#[cfg(feature = "xl")]
 impl RemapMode<TIM9> for RemapDefault<TIM9> {
     fn remap(afio: &mut Afio) {
         afio.mapr2.modify_mapr(|_, w| w.tim9_remap().clear_bit());
     }
 }
+#[cfg(feature = "xl")]
 impl RemapMode<TIM9> for RemapFull<TIM9> {
     fn remap(afio: &mut Afio) {
         afio.mapr2.modify_mapr(|_, w| w.tim9_remap().set_bit());

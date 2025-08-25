@@ -23,6 +23,7 @@ jobs:
           python-version: "3.13"
       - run: python scripts/sync_code.py --check
       - run: cargo build --release --features=stm32f103,xG
+      - run: cargo build --release --features=stm32f100,xC
       - run: python scripts/build.py --example=f103c8
 
   publish:

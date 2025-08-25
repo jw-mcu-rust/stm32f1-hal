@@ -16,8 +16,21 @@ REMAP_MODES = {
 }
 
 CFG_TABLE = {
-    "TIM4": '#[cfg(feature = "medium")]',
     "TIM1": '#[cfg(any(feature = "stm32f100", feature = "stm32f103", feature = "connectivity"))]',
+    "TIM4": '#[cfg(feature = "medium")]',
+    "TIM5": '#[cfg(any(feature = "high", feature = "connectivity"))]',
+    "TIM6": '#[cfg(any(feature = "stm32f100", feature = "high", feature = "connectivity"))]',
+    "TIM7": '#[cfg(any(all(feature = "high", any(feature = "stm32f101", feature = "stm32f103")),any(feature = "stm32f100", feature = "connectivity")))]',
+    "TIM8": '#[cfg(all(feature = "stm32f103", feature = "high"))]',
+    "TIM9": '#[cfg(feature = "xl")]',
+    "TIM10": '#[cfg(feature = "xl")]',
+    "TIM11": '#[cfg(feature = "xl")]',
+    "TIM12": '#[cfg(any(feature = "xl", all(feature = "stm32f100", feature = "high",)))]',
+    "TIM13": '#[cfg(any(feature = "xl", all(feature = "stm32f100", feature = "high",)))]',
+    "TIM14": '#[cfg(any(feature = "xl", all(feature = "stm32f100", feature = "high",)))]',
+    "TIM15": '#[cfg(feature = "stm32f100")]',
+    "TIM16": '#[cfg(feature = "stm32f100")]',
+    "TIM17": '#[cfg(feature = "stm32f100")]',
 }
 
 
@@ -120,10 +133,10 @@ def write_item(filter: str, peri: str, mode: str, pins: dict[str, str], w: Write
     for pin_func, pin in sorted(pins.items()):
         impl = get_impl_template(pin_func)
         if impl:
-            if pin.startswith("PF") or pin.startswith("PG"):
-                w.write('#[cfg(any(feature = "xl", feature = "high"))]\n')
-            else:
-                w.write(CFG_TABLE.get(peri, ""))
+            cfg = CFG_TABLE.get(peri, "")
+            if cfg:
+                w.write(cfg)
+
             func = func_pin_name(filter, pin_func)
             w.write(impl.format(func=func, mode=mode, peri=peri, pin=pin))
             w.write("{}")

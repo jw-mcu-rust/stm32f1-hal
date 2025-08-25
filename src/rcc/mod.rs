@@ -199,6 +199,7 @@ impl Rcc {
     /// let cfg = rcc::Config::hse(8.MHz()).sysclk(72.MHz());
     /// let mut rcc = dp.RCC.constrain().freeze(cfg, &mut flash.acr);
     /// ```
+    #[allow(unused_variables)]
     #[inline(always)]
     pub fn freeze(self, cfg: impl Into<RawConfig>, acr: &mut ACR) -> Self {
         let cfg = cfg.into();

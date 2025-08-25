@@ -50,18 +50,7 @@ pub mod timer8;
 #[cfg(feature = "xl")]
 pub mod timer9;
 
-pub trait Instance: rcc::Enable + rcc::Reset + rcc::BusTimerClock + GeneralTimerExt {}
-
-// Traits ---------------------------------------------------------------------
-
-pub trait GeneralTimerExt: GeneralTimer {
-    fn enable_preload(&mut self, b: bool);
-}
-
-pub trait MasterTimer: GeneralTimerExt {
-    type Mms;
-    fn master_mode(&mut self, mode: Self::Mms);
-}
+pub trait Instance: rcc::Enable + rcc::Reset + rcc::BusTimerClock + GeneralTimer {}
 
 // Initialize -----------------------------------------------------------------
 
@@ -173,7 +162,7 @@ impl<TIM: Instance + Steal> Timer<TIM> {
 }
 
 impl<TIM: Instance + MasterTimer> Timer<TIM> {
-    pub fn set_master_mode(&mut self, mode: TIM::Mms) {
+    pub fn set_master_mode(&mut self, mode: MasterMode) {
         self.tim.master_mode(mode)
     }
 }
@@ -271,17 +260,9 @@ impl<TIM: Instance + TimerWithPwm4Ch + Steal> Timer<TIM> {
     }
 }
 
-// Fixed precision timers -----------------------------------------------------
+// Destroy --------------------------------------------------------------------
 
-impl<TIM: Instance + MasterTimer, const FREQ: u32> FTimer<TIM, FREQ> {
-    pub fn set_master_mode(&mut self, mode: TIM::Mms) {
-        self.tim.master_mode(mode)
-    }
-}
-
-// Release --------------------------------------------------------------------
-
-pub fn release_counter_hz<TIM: GeneralTimer>(mut counter: CounterHz<TIM>) -> Timer<TIM> {
+pub fn destroy_counter_hz<TIM: GeneralTimer>(mut counter: CounterHz<TIM>) -> Timer<TIM> {
     // stop timer
     counter.tim.reset_config();
     Timer {
@@ -322,71 +303,3 @@ const fn compute_prescaler_arr(timer_clk: u32, update_freq: u32) -> (u32, u32) {
     let arr = ticks / (prescaler + 1) - 1;
     (prescaler, arr)
 }
-
-// hal!(
-//     pac::TIM2: [Timer2, u16, dbg_tim2_stop, c: (CH4), m: tim2, d: dir,],
-//     pac::TIM3: [Timer3, u16, dbg_tim3_stop, c: (CH4), m: tim2, d: dir,],
-// );
-
-// #[cfg(any(feature = "stm32f100", feature = "stm32f103", feature = "connectivity"))]
-// hal!(
-//     pac::TIM1: [Timer1, u16, dbg_tim1_stop, c: (CH4, _aoe), m: tim1, d: dir,],
-// );
-
-// #[cfg(any(feature = "stm32f100", feature = "high", feature = "connectivity"))]
-// hal! {
-//     pac::TIM6: [Timer6, u16, dbg_tim6_stop, m: tim6,],
-// }
-
-// #[cfg(any(
-//     all(feature = "high", any(feature = "stm32f101", feature = "stm32f103")),
-//     any(feature = "stm32f100", feature = "connectivity")
-// ))]
-// hal! {
-//     pac::TIM7: [Timer7, u16, dbg_tim7_stop, m: tim6,],
-// }
-
-// #[cfg(feature = "stm32f100")]
-// hal! {
-//     pac::TIM15: [Timer15, u16, dbg_tim15_stop, c: (CH2),],
-//     pac::TIM16: [Timer16, u16, dbg_tim16_stop, c: (CH1),],
-//     pac::TIM17: [Timer17, u16, dbg_tim17_stop, c: (CH1),],
-// }
-
-// #[cfg(feature = "medium")]
-// hal! {
-//     pac::TIM4: [Timer4, u16, dbg_tim4_stop, c: (CH4), m: tim2, d: dir,],
-// }
-
-// #[cfg(any(feature = "high", feature = "connectivity"))]
-// hal! {
-//     pac::TIM5: [Timer5, u16, dbg_tim5_stop, c: (CH4), m: tim2, d: dir,],
-// }
-
-// #[cfg(all(feature = "stm32f103", feature = "high"))]
-// hal! {
-//     pac::TIM8: [Timer8, u16, dbg_tim8_stop, c: (CH4, _aoe), m: tim1, d: dir,],
-// }
-
-//TODO: restore these timers once stm32-rs has been updated
-/*
- *   dbg_tim(12-13)_stop fields missing from 103 xl in stm32-rs
- *   dbg_tim(9-10)_stop fields missing from 101 xl in stm32-rs
-#[cfg(any(
-    feature = "xl",
-    all(
-        feature = "stm32f100",
-        feature = "high",
-)))]
-hal! {
-    TIM12: (tim12, dbg_tim12_stop),
-    TIM13: (tim13, dbg_tim13_stop),
-    TIM14: (tim14, dbg_tim14_stop),
-}
-#[cfg(feature = "xl")]
-hal! {
-    TIM9: (tim9, dbg_tim9_stop),
-    TIM10: (tim10, dbg_tim10_stop),
-    TIM11: (tim11, dbg_tim11_stop),
-}
-*/

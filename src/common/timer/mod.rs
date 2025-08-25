@@ -22,6 +22,7 @@ pub trait GeneralTimer {
     fn disable_counter(&mut self);
     fn is_counter_enabled(&self) -> bool;
     fn reset_counter(&mut self);
+    fn enable_preload(&mut self, b: bool);
     fn max_auto_reload() -> u32;
     unsafe fn set_auto_reload_unchecked(&mut self, arr: u32);
     fn set_auto_reload(&mut self, arr: u32) -> Result<(), Error>;
@@ -41,6 +42,10 @@ pub trait GeneralTimer {
 
 pub trait TimerDirection: GeneralTimer {
     fn set_count_direction(&mut self, dir: CountDirection);
+}
+
+pub trait MasterTimer: GeneralTimer {
+    fn master_mode(&mut self, mode: MasterMode);
 }
 
 pub trait TimerWithPwm: GeneralTimer {
@@ -125,4 +130,24 @@ bitflags::bitflags! {
         const C3 = 1 << 3;
         const C4 = 1 << 4;
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MasterMode {
+    ///0: The UG bit from the TIMx_EGR register is used as trigger output
+    Reset,
+    ///1: The counter enable signal, CNT_EN, is used as trigger output
+    Enable,
+    ///2: The update event is selected as trigger output
+    Update,
+    ///3: The trigger output send a positive pulse when the CC1IF flag it to be set, as soon as a capture or a compare match occurred
+    ComparePulse,
+    ///4: OC1REF signal is used as trigger output
+    CompareOc1,
+    ///5: OC2REF signal is used as trigger output
+    CompareOc2,
+    ///6: OC3REF signal is used as trigger output
+    CompareOc3,
+    ///7: OC4REF signal is used as trigger output
+    CompareOc4,
 }

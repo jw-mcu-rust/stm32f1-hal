@@ -76,3 +76,9 @@ impl<TIM: GeneralTimer, const FREQ: u32> FTimer<TIM, FREQ> {
         self.tim.stop_in_debug(state);
     }
 }
+
+impl<TIM: MasterTimer, const FREQ: u32> FTimer<TIM, FREQ> {
+    pub fn set_master_mode(&mut self, mode: MasterMode) {
+        self.tim.master_mode(mode)
+    }
+}

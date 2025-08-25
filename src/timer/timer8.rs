@@ -137,9 +137,7 @@ impl GeneralTimer for TimerX {
         dbg.cr().modify(|_, w| w.dbg_tim8_stop().bit(state));
         // sync dbg_end
     }
-}
 
-impl GeneralTimerExt for TimerX {
     #[inline(always)]
     fn enable_preload(&mut self, b: bool) {
         self.cr1().modify(|_, w| w.arpe().bit(b));
@@ -288,14 +286,11 @@ impl TimerWithPwm4Ch for TimerX {
 
 // Other ----------------------------------------------------------------------
 
-// sync master_type
-type Mms = pac::tim1::cr2::MMS;
 // sync master
 impl MasterTimer for TimerX {
-    type Mms = Mms;
     #[inline(always)]
-    fn master_mode(&mut self, mode: Self::Mms) {
-        self.cr2().modify(|_, w| w.mms().variant(mode));
+    fn master_mode(&mut self, mode: MasterMode) {
+        self.cr2().modify(|_, w| w.mms().variant(mode.into()));
     }
 }
 

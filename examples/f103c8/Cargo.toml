@@ -6,7 +6,9 @@
     version = "0.1.0"
 
 [dependencies]
-    [dependencies.jw-stm32f1-hal]
+    cortex-m = "0.7"
+    cortex-m-rt = "0.7"
+    [dependencies.stm32f1-hal]
         features = ["stm32f103", "x8", "critical-section-single-core"]
         path = "../.."
 

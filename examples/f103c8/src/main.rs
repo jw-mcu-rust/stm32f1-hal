@@ -7,8 +7,8 @@
 use core::{mem::MaybeUninit, panic::PanicInfo};
 use cortex_m::asm;
 use cortex_m_rt::entry;
-use jw_stm32f1_hal as hal;
-use jw_stm32f1_hal::{
+use stm32f1_hal as hal;
+use stm32f1_hal::{
     Heap, Mcu,
     afio::{NONE_PIN, RemapDefault},
     embedded_hal::{self, pwm::SetDutyCycle},

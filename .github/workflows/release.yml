@@ -1,13 +1,32 @@
 name: Release
 
 on:
+  pull_request:
+  merge_group:
   workflow_dispatch:
   push:
+    branches:
+      - main
     tags:
       - "v*"
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: thumbv7m-none-eabi
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python scripts/sync_code.py --check
+      - run: cargo build --release --features=stm32f103,xG
+      - run: python scripts/build.py --example=f103c8
+
   publish:
+    needs: test
     runs-on: ubuntu-latest
     environment: release # Optional: for enhanced security
     permissions:

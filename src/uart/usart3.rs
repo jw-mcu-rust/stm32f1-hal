@@ -12,16 +12,15 @@ use crate::{
 // Initialization -------------------------------------------------------------
 
 impl UartInit<UartX> for UartX {
-    fn constrain(self) -> Uart<UartX> {
+    fn constrain(self, mcu: &mut Mcu) -> Uart<UartX> {
+        UartX::enable(&mut mcu.rcc);
+        UartX::reset(&mut mcu.rcc);
         Uart { uart: self }
     }
 }
 
 impl UartPeriphExt for UartX {
     fn config(&mut self, config: Config, mcu: &mut Mcu) {
-        UartX::enable(&mut mcu.rcc);
-        UartX::reset(&mut mcu.rcc);
-
         // Configure baud rate
         let brr = UartX::clock(&mcu.rcc.clocks).raw() / config.baudrate;
         assert!(brr >= 16, "impossible baud rate");

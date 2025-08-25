@@ -16,7 +16,7 @@ use crate::{
 use crate::Mcu;
 
 pub trait UartInit<U> {
-    fn constrain(self) -> Uart<U>;
+    fn constrain(self, mcu: &mut Mcu) -> Uart<U>;
 }
 
 pub trait UartPeriphExt: UartPeriph + BusClock + Enable + Reset {

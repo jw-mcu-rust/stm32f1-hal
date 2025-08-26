@@ -4,17 +4,14 @@ type UartX = pac::USART1;
 // sync begin
 
 use super::*;
-use crate::{
-    Mcu, pac,
-    rcc::{BusClock, Enable, Reset},
-};
+use crate::{Mcu, pac};
 
 // Initialization -------------------------------------------------------------
 
 impl UartInit<UartX> for UartX {
     fn constrain(self, mcu: &mut Mcu) -> Uart<UartX> {
-        UartX::enable(&mut mcu.rcc);
-        UartX::reset(&mut mcu.rcc);
+        mcu.rcc.enable(&self);
+        mcu.rcc.reset(&self);
         Uart { uart: self }
     }
 }
@@ -22,7 +19,7 @@ impl UartInit<UartX> for UartX {
 impl UartPeriphExt for UartX {
     fn config(&mut self, config: Config, mcu: &mut Mcu) {
         // Configure baud rate
-        let brr = UartX::clock(&mcu.rcc.clocks).raw() / config.baudrate;
+        let brr = mcu.rcc.get_clock(self).raw() / config.baudrate;
         assert!(brr >= 16, "impossible baud rate");
         self.brr().write(|w| unsafe { w.bits(brr as u16) });
 

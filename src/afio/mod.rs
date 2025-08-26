@@ -4,20 +4,20 @@ pub mod timer_remap;
 pub mod uart_remap;
 
 use crate::gpio::{self, Alternate, Cr, Debugger, Floating, Input, OpenDrain, PushPull};
-use crate::pac::{self, AFIO, RCC, afio};
-use crate::rcc::{Enable, Reset};
+use crate::pac::{self, AFIO, afio};
+use crate::rcc::Rcc;
 use core::marker::PhantomData;
 
 type MaprBits = <afio::mapr::MAPRrs as RegisterSpec>::Ux;
 
 pub trait AfioInit {
-    fn constrain(self, rcc: &mut RCC) -> Afio;
+    fn constrain(self, rcc: &mut Rcc) -> Afio;
 }
 
 impl AfioInit for AFIO {
-    fn constrain(self, rcc: &mut RCC) -> Afio {
-        AFIO::enable(rcc);
-        AFIO::reset(rcc);
+    fn constrain(self, rcc: &mut Rcc) -> Afio {
+        rcc.enable(&self);
+        rcc.reset(&self);
 
         Afio {
             _reg: self,

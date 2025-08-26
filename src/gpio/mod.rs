@@ -75,8 +75,7 @@
 
 use core::marker::PhantomData;
 
-use crate::afio;
-use crate::pac::{EXTI, RCC};
+use crate::{afio, pac::EXTI, rcc::Rcc};
 
 mod partially_erased;
 pub use partially_erased::{PEPin, PartiallyErasedPin};
@@ -132,13 +131,13 @@ pub trait GpioExt {
     /// Splits the GPIO block into independent pins and registers.
     ///
     /// This resets the state of the GPIO block.
-    fn split(self, rcc: &mut RCC) -> Self::Parts;
+    fn split(self, rcc: &mut Rcc) -> Self::Parts;
 
     /// Splits the GPIO block into independent pins and registers without resetting its state.
     ///
     /// # Safety
     /// Make sure that all pins modes are set in reset state.
-    unsafe fn split_without_reset(self, rcc: &mut RCC) -> Self::Parts;
+    unsafe fn split_without_reset(self, rcc: &mut Rcc) -> Self::Parts;
 }
 
 /// Marker trait for active states.
@@ -368,8 +367,8 @@ macro_rules! gpio {
     ]) => {
         /// GPIO
         pub mod $gpiox {
-            use crate::pac::{$GPIOX, RCC};
-            use crate::rcc::{Enable, Reset};
+            use crate::pac::$GPIOX;
+            use crate::rcc::Rcc;
             use super::{Active, Floating, GpioExt, Input, PartiallyErasedPin, ErasedPin, Pin, Cr};
             #[allow(unused)]
             use super::Debugger;
@@ -393,9 +392,9 @@ macro_rules! gpio {
             impl GpioExt for $GPIOX {
                 type Parts = Parts;
 
-                fn split(self, rcc: &mut RCC) -> Parts {
-                        $GPIOX::enable(rcc);
-                        $GPIOX::reset(rcc);
+                fn split(self, rcc: &mut Rcc) -> Parts {
+                        rcc.enable(&self);
+                        rcc.reset(&self);
 
                     Parts {
                         crl: Cr::<$port_id, false>,
@@ -406,8 +405,8 @@ macro_rules! gpio {
                     }
                 }
 
-                unsafe fn split_without_reset(self, rcc: &mut RCC) -> Parts {
-                        $GPIOX::enable(rcc);
+                unsafe fn split_without_reset(self, rcc: &mut Rcc) -> Parts {
+                        rcc.enable(&self);
 
                     Parts {
                         crl: Cr::<$port_id, false>,

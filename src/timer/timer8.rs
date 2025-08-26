@@ -308,17 +308,15 @@ impl TimerDirection for TimerX {
 #[cfg(feature = "rtic")]
 mod timer_rtic {
     use super::*;
-    use crate::{
-        Mcu,
-        rcc::{BusTimerClock, Enable, Reset},
-    };
+    use crate::Mcu;
     use rtic_monotonic::Monotonic;
 
     impl MonoTimerExt for TimerX {
         fn monotonic<const FREQ: u32>(self, mcu: &mut Mcu) -> MonoTimer<Self, FREQ> {
-            TimerX::enable(&mut mcu.rcc);
-            TimerX::reset(&mut mcu.rcc);
-            FTimer::new(self, TimerX::timer_clock(&mcu.rcc.clocks)).monotonic()
+            mcu.rcc.enable(&self);
+            mcu.rcc.reset(&self);
+            let clk = mcu.rcc.get_timer_clock(&self);
+            FTimer::new(self, clk).monotonic()
         }
     }
 

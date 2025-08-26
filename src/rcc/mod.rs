@@ -45,6 +45,143 @@ pub struct Rcc {
     pub(crate) rb: RCC,
 }
 
+impl Rcc {
+    /// Applies the clock configuration and returns a `Clocks` struct that signifies that the
+    /// clocks are frozen, and contains the frequencies used. After this function is called,
+    /// the clocks can not change
+    ///
+    /// Usage:
+    ///
+    /// ```rust
+    /// let dp = pac::Peripherals::take().unwrap();
+    /// let mut flash = dp.FLASH.constrain();
+    /// let cfg = rcc::Config::hse(8.MHz()).sysclk(72.MHz());
+    /// let mut rcc = dp.RCC.constrain().freeze(cfg, &mut flash.acr);
+    /// ```
+    #[allow(unused_variables)]
+    #[inline(always)]
+    pub fn freeze(self, cfg: impl Into<RawConfig>, acr: &mut ACR) -> Self {
+        let cfg = cfg.into();
+        let clocks = cfg.get_clocks();
+        // adjust flash wait states
+        #[cfg(any(feature = "stm32f103", feature = "connectivity"))]
+        unsafe {
+            acr.acr().write(|w| {
+                w.latency().bits(if clocks.sysclk <= MHz(24) {
+                    0b000
+                } else if clocks.sysclk <= MHz(48) {
+                    0b001
+                } else {
+                    0b010
+                })
+            });
+        }
+
+        let rcc = unsafe { &*RCC::ptr() };
+
+        if cfg.hse.is_some() {
+            // enable HSE and wait for it to be ready
+
+            rcc.cr().modify(|_, w| {
+                if cfg.hse_bypass {
+                    w.hsebyp().bypassed();
+                }
+                w.hseon().set_bit()
+            });
+
+            while rcc.cr().read().hserdy().bit_is_clear() {}
+        }
+
+        if let Some(pllmul_bits) = cfg.pllmul {
+            // enable PLL and wait for it to be ready
+
+            #[allow(unused_unsafe)]
+            rcc.cfgr().modify(|_, w| unsafe {
+                w.pllmul().bits(pllmul_bits).pllsrc().bit(cfg.hse.is_some())
+            });
+
+            rcc.cr().modify(|_, w| w.pllon().set_bit());
+
+            while rcc.cr().read().pllrdy().bit_is_clear() {}
+        }
+
+        // set prescalers and clock source
+        #[cfg(feature = "connectivity")]
+        rcc.cfgr().modify(|_, w| unsafe {
+            w.adcpre().variant(cfg.adcpre);
+            w.ppre2().bits(cfg.ppre2 as u8);
+            w.ppre1().bits(cfg.ppre1 as u8);
+            w.hpre().bits(cfg.hpre as u8);
+            w.otgfspre().variant(cfg.usbpre);
+            w.sw().bits(if cfg.pllmul.is_some() {
+                // PLL
+                0b10
+            } else if cfg.hse.is_some() {
+                // HSE
+                0b1
+            } else {
+                // HSI
+                0b0
+            })
+        });
+
+        #[cfg(feature = "stm32f103")]
+        rcc.cfgr().modify(|_, w| unsafe {
+            w.adcpre().variant(cfg.adcpre);
+            w.ppre2().bits(cfg.ppre2 as u8);
+            w.ppre1().bits(cfg.ppre1 as u8);
+            w.hpre().bits(cfg.hpre as u8);
+            w.usbpre().variant(cfg.usbpre);
+            w.sw().bits(if cfg.pllmul.is_some() {
+                // PLL
+                0b10
+            } else {
+                // HSE or HSI
+                u8::from(cfg.hse.is_some())
+            })
+        });
+
+        #[cfg(any(feature = "stm32f100", feature = "stm32f101"))]
+        rcc.cfgr().modify(|_, w| unsafe {
+            w.adcpre().variant(cfg.adcpre);
+            w.ppre2().bits(cfg.ppre2 as u8);
+            w.ppre1().bits(cfg.ppre1 as u8);
+            w.hpre().bits(cfg.hpre as u8);
+            w.sw().bits(if cfg.pllmul.is_some() {
+                // PLL
+                0b10
+            } else if cfg.hse.is_some() {
+                // HSE
+                0b1
+            } else {
+                // HSI
+                0b0
+            })
+        });
+
+        Self {
+            rb: self.rb,
+            clocks,
+        }
+    }
+
+    pub fn enable<T: Enable>(&mut self, _periph: &T) {
+        T::enable(self);
+    }
+
+    pub fn reset<T: Reset>(&mut self, _periph: &T) {
+        T::reset(self);
+    }
+
+    pub fn get_clock<T: BusClock>(&self, _periph: &T) -> Hertz {
+        T::clock(&self.clocks)
+    }
+
+    pub fn get_timer_clock<T: BusTimerClock>(&self, _periph: &T) -> Hertz {
+        T::timer_clock(&self.clocks)
+    }
+}
+
 impl Deref for Rcc {
     type Target = RCC;
     fn deref(&self) -> &Self::Target {
@@ -183,127 +320,6 @@ impl Config {
     pub fn adcclk(mut self, freq: Hertz) -> Self {
         self.adcclk = Some(freq.raw());
         self
-    }
-}
-
-impl Rcc {
-    /// Applies the clock configuration and returns a `Clocks` struct that signifies that the
-    /// clocks are frozen, and contains the frequencies used. After this function is called,
-    /// the clocks can not change
-    ///
-    /// Usage:
-    ///
-    /// ```rust
-    /// let dp = pac::Peripherals::take().unwrap();
-    /// let mut flash = dp.FLASH.constrain();
-    /// let cfg = rcc::Config::hse(8.MHz()).sysclk(72.MHz());
-    /// let mut rcc = dp.RCC.constrain().freeze(cfg, &mut flash.acr);
-    /// ```
-    #[allow(unused_variables)]
-    #[inline(always)]
-    pub fn freeze(self, cfg: impl Into<RawConfig>, acr: &mut ACR) -> Self {
-        let cfg = cfg.into();
-        let clocks = cfg.get_clocks();
-        // adjust flash wait states
-        #[cfg(any(feature = "stm32f103", feature = "connectivity"))]
-        unsafe {
-            acr.acr().write(|w| {
-                w.latency().bits(if clocks.sysclk <= MHz(24) {
-                    0b000
-                } else if clocks.sysclk <= MHz(48) {
-                    0b001
-                } else {
-                    0b010
-                })
-            });
-        }
-
-        let rcc = unsafe { &*RCC::ptr() };
-
-        if cfg.hse.is_some() {
-            // enable HSE and wait for it to be ready
-
-            rcc.cr().modify(|_, w| {
-                if cfg.hse_bypass {
-                    w.hsebyp().bypassed();
-                }
-                w.hseon().set_bit()
-            });
-
-            while rcc.cr().read().hserdy().bit_is_clear() {}
-        }
-
-        if let Some(pllmul_bits) = cfg.pllmul {
-            // enable PLL and wait for it to be ready
-
-            #[allow(unused_unsafe)]
-            rcc.cfgr().modify(|_, w| unsafe {
-                w.pllmul().bits(pllmul_bits).pllsrc().bit(cfg.hse.is_some())
-            });
-
-            rcc.cr().modify(|_, w| w.pllon().set_bit());
-
-            while rcc.cr().read().pllrdy().bit_is_clear() {}
-        }
-
-        // set prescalers and clock source
-        #[cfg(feature = "connectivity")]
-        rcc.cfgr().modify(|_, w| unsafe {
-            w.adcpre().variant(cfg.adcpre);
-            w.ppre2().bits(cfg.ppre2 as u8);
-            w.ppre1().bits(cfg.ppre1 as u8);
-            w.hpre().bits(cfg.hpre as u8);
-            w.otgfspre().variant(cfg.usbpre);
-            w.sw().bits(if cfg.pllmul.is_some() {
-                // PLL
-                0b10
-            } else if cfg.hse.is_some() {
-                // HSE
-                0b1
-            } else {
-                // HSI
-                0b0
-            })
-        });
-
-        #[cfg(feature = "stm32f103")]
-        rcc.cfgr().modify(|_, w| unsafe {
-            w.adcpre().variant(cfg.adcpre);
-            w.ppre2().bits(cfg.ppre2 as u8);
-            w.ppre1().bits(cfg.ppre1 as u8);
-            w.hpre().bits(cfg.hpre as u8);
-            w.usbpre().variant(cfg.usbpre);
-            w.sw().bits(if cfg.pllmul.is_some() {
-                // PLL
-                0b10
-            } else {
-                // HSE or HSI
-                u8::from(cfg.hse.is_some())
-            })
-        });
-
-        #[cfg(any(feature = "stm32f100", feature = "stm32f101"))]
-        rcc.cfgr().modify(|_, w| unsafe {
-            w.adcpre().variant(cfg.adcpre);
-            w.ppre2().bits(cfg.ppre2 as u8);
-            w.ppre1().bits(cfg.ppre1 as u8);
-            w.hpre().bits(cfg.hpre as u8);
-            w.sw().bits(if cfg.pllmul.is_some() {
-                // PLL
-                0b10
-            } else if cfg.hse.is_some() {
-                // HSE
-                0b1
-            } else {
-                // HSI
-                0b0
-            })
-        });
-
-        Self {
-            rb: self.rb,
-            clocks,
-        }
     }
 }
 

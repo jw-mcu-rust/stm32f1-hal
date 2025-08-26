@@ -68,11 +68,11 @@ impl<TIM: Instance + Steal> Timer<TIM> {
     /// Initialize timer
     pub fn new(tim: TIM, mcu: &mut Mcu) -> Self {
         // Enable and reset the timer peripheral
-        TIM::enable(&mut mcu.rcc);
-        TIM::reset(&mut mcu.rcc);
+        mcu.rcc.enable(&tim);
+        mcu.rcc.reset(&tim);
 
         Self {
-            clk: TIM::timer_clock(&mcu.rcc.clocks),
+            clk: mcu.rcc.get_timer_clock(&tim),
             tim,
         }
     }

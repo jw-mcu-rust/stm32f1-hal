@@ -20,7 +20,7 @@ impl Callback {
         }
     }
 
-    /// Register the callback, and enable the interrupt.
+    /// Register the callback, and enable the interrupt line in NVIC.
     /// You can call it only once.
     pub fn set(&self, mcu: &mut Mcu, callback: impl FnMut() + 'static) {
         let cb = Cell::new(Box::new(callback));

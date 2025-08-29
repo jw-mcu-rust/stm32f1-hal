@@ -72,7 +72,7 @@ REG_TEMPLATE = """impl RemapMode<{peri}> for {mode}<{peri}> {{
 
 
 def write_reg_operation(d: dict, filter: str, w: Write) -> None:
-    w.write("\n// Register operation ------------\n\n")
+    w.write("\n// Register operations ------------\n\n")
     for peri, remap_modes in sorted(d.items()):
         if match_filter(filter, peri):
             for mode_name, mode_info in sorted(remap_modes.items()):

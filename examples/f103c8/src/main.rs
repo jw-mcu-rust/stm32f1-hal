@@ -5,7 +5,8 @@
 #![allow(unused_mut)]
 
 use core::{mem::MaybeUninit, panic::PanicInfo};
-use stm32f1_hal as hal;
+use stm32f1_hal::gpio::ExtiPin;
+use stm32f1_hal::{self as hal, Steal};
 use stm32f1_hal::{
     Heap, Mcu,
     afio::{NONE_PIN, RemapDefault},
@@ -13,7 +14,7 @@ use stm32f1_hal::{
     cortex_m_rt::entry,
     embedded_hal::{self, pwm::SetDutyCycle},
     embedded_io,
-    gpio::PinState,
+    gpio::{Edge, PinState},
     nvic_scb::PriorityGrouping,
     pac::{self, Interrupt},
     prelude::*,
@@ -57,10 +58,14 @@ fn main() -> ! {
         nvic: cp.NVIC.constrain(),
         rcc,
         afio,
+        exti: dp.EXTI,
     };
 
     // Keep them in one place for easier management
-    mcu.nvic.set_priority(Interrupt::USART1, 1);
+    mcu.nvic.enable(pac::interrupt::USART1, false); // Optional
+    mcu.nvic.set_priority(Interrupt::USART1, 2);
+    mcu.nvic.enable(pac::interrupt::EXTI1, false);
+    mcu.nvic.set_priority(Interrupt::EXTI1, 1);
 
     // UART -------------------------------------
 
@@ -114,6 +119,19 @@ fn main() -> ! {
 
     bt.start();
 
+    // External interruption --------------------
+
+    let mut ex = gpiob.pb1.into_pull_up_input(&mut gpiob.crl);
+    let ex1_ctl = unsafe { ex.steal() }; // Optional
+    ex.make_interrupt_source(&mut mcu.afio);
+    ex.trigger_on_edge(Edge::Rising);
+    ex.enable_interrupt();
+    all_it::EXTI1_CB.set(&mut mcu, move || {
+        if ex.check_interrupt() {
+            ex.clear_interrupt_pending_bit();
+        }
+    });
+
     loop {
         if timer.wait().is_ok() {
             led_task.poll();
@@ -143,7 +161,6 @@ fn uart_interrupt_init<U: UartPeriph + 'static>(
     it_line: pac::interrupt,
     interrupt_callback: &hal::interrupt::Callback,
 ) -> UartPollTask<impl embedded_io::Write + use<U>, impl embedded_io::Read + use<U>> {
-    mcu.nvic.enable(it_line, false);
     let (tx, mut tx_it) = tx.into_interrupt(64, 0, 10_000);
     let (rx, mut rx_it) = rx.into_interrupt(64, 0);
     interrupt_callback.set(mcu, move || {

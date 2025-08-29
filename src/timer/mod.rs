@@ -175,10 +175,10 @@ impl<TIM: Instance + TimerDirection> Timer<TIM> {
 
 // Initialize PWM -------------------------------------------------------------
 
-impl<TIM: Instance + TimerWithPwm1Ch + Steal> Timer<TIM> {
+impl<'a, TIM: Instance + TimerWithPwm1Ch + Steal + 'a> Timer<TIM> {
     pub fn into_pwm1<REMAP: RemapMode<TIM>>(
         mut self,
-        _pin: impl TimCh1Pin<REMAP>,
+        _pin: impl TimCh1Pin<REMAP> + 'a,
         update_freq: Hertz,
         preload: bool,
         mcu: &mut Mcu,
@@ -193,7 +193,7 @@ impl<TIM: Instance + TimerWithPwm1Ch + Steal> Timer<TIM> {
     }
 }
 
-impl<TIM: Instance + TimerWithPwm2Ch + Steal> Timer<TIM> {
+impl<'a, TIM: Instance + TimerWithPwm2Ch + Steal + 'a> Timer<TIM> {
     pub fn into_pwm2<REMAP: RemapMode<TIM>>(
         mut self,
         pins: (Option<impl TimCh1Pin<REMAP>>, Option<impl TimCh2Pin<REMAP>>),
@@ -202,8 +202,8 @@ impl<TIM: Instance + TimerWithPwm2Ch + Steal> Timer<TIM> {
         mcu: &mut Mcu,
     ) -> (
         PwmTimer<TIM>,
-        Option<impl PwmChannel>,
-        Option<impl PwmChannel>,
+        Option<impl PwmChannel + 'a>,
+        Option<impl PwmChannel + 'a>,
     ) {
         REMAP::remap(&mut mcu.afio);
         self.tim.enable_preload(preload);
@@ -220,7 +220,7 @@ impl<TIM: Instance + TimerWithPwm2Ch + Steal> Timer<TIM> {
     }
 }
 
-impl<TIM: Instance + TimerWithPwm4Ch + Steal> Timer<TIM> {
+impl<'a, TIM: Instance + TimerWithPwm4Ch + Steal + 'a> Timer<TIM> {
     pub fn into_pwm4<REMAP: RemapMode<TIM>>(
         mut self,
         pins: (
@@ -234,10 +234,10 @@ impl<TIM: Instance + TimerWithPwm4Ch + Steal> Timer<TIM> {
         mcu: &mut Mcu,
     ) -> (
         PwmTimer<TIM>,
-        Option<impl PwmChannel>,
-        Option<impl PwmChannel>,
-        Option<impl PwmChannel>,
-        Option<impl PwmChannel>,
+        Option<impl PwmChannel + 'a>,
+        Option<impl PwmChannel + 'a>,
+        Option<impl PwmChannel + 'a>,
+        Option<impl PwmChannel + 'a>,
     ) {
         REMAP::remap(&mut mcu.afio);
         self.tim.enable_preload(preload);

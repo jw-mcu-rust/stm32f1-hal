@@ -48,7 +48,7 @@ impl UartCkPin<RemapPartial1<USART3>> for PC12<Alternate<PushPull>> {}
 impl<PULL: UpMode> UartRxPin<RemapPartial1<USART3>> for PC11<Input<PULL>> {}
 impl UartTxPin<RemapPartial1<USART3>> for PC10<Alternate<PushPull>> {}
 
-// Register operation ------------
+// Register operations ------------
 
 impl RemapMode<UART4> for RemapDefault<UART4> {
     fn remap(afio: &mut Afio) {}

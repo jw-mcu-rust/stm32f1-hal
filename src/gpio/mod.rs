@@ -75,7 +75,7 @@
 
 use core::marker::PhantomData;
 
-use crate::{afio, pac::EXTI, rcc::Rcc};
+use crate::{Steal, afio, pac::EXTI, rcc::Rcc};
 
 mod partially_erased;
 pub use partially_erased::{PEPin, PartiallyErasedPin};
@@ -144,12 +144,12 @@ pub trait GpioExt {
 pub trait Active {}
 
 /// Marker trait for Floating or PullUp inputs
-pub trait UpMode {}
+pub trait UpMode: Clone {}
 impl UpMode for Floating {}
 impl UpMode for PullUp {}
 
 /// Input mode (type state)
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Input<PULL = Floating>(PhantomData<PULL>);
 
 impl<PULL> Active for Input<PULL> {}
@@ -159,7 +159,7 @@ impl<PULL> Active for Input<PULL> {}
 pub struct Debugger;
 
 /// Floating input (type state)
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Floating;
 
 /// Pulled down input (type state)
@@ -167,7 +167,7 @@ pub struct Floating;
 pub struct PullDown;
 
 /// Pulled up input (type state)
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct PullUp;
 
 /// Output mode (type state)
@@ -231,9 +231,9 @@ impl Interruptable for Dynamic {}
 /// External Interrupt Pin
 pub trait ExtiPin {
     fn make_interrupt_source(&mut self, afio: &mut afio::Afio);
-    fn trigger_on_edge(&mut self, exti: &mut EXTI, level: Edge);
-    fn enable_interrupt(&mut self, exti: &mut EXTI);
-    fn disable_interrupt(&mut self, exti: &mut EXTI);
+    fn trigger_on_edge(&mut self, level: Edge);
+    fn enable_interrupt(&mut self);
+    fn disable_interrupt(&mut self);
     fn clear_interrupt_pending_bit(&mut self);
     fn check_interrupt(&self) -> bool;
 }
@@ -274,7 +274,8 @@ where
     }
 
     /// Generate interrupt on rising edge, falling edge or both
-    fn trigger_on_edge(&mut self, exti: &mut EXTI, edge: Edge) {
+    fn trigger_on_edge(&mut self, edge: Edge) {
+        let exti = unsafe { EXTI::steal() };
         let pin_number = self.pin_id();
         match edge {
             Edge::Rising => {
@@ -299,25 +300,27 @@ where
     }
 
     /// Enable external interrupts from this pin.
-    fn enable_interrupt(&mut self, exti: &mut EXTI) {
+    fn enable_interrupt(&mut self) {
+        let exti = unsafe { EXTI::steal() };
         exti.imr()
             .modify(|r, w| unsafe { w.bits(r.bits() | (1 << self.pin_id())) });
     }
 
     /// Disable external interrupts from this pin
-    fn disable_interrupt(&mut self, exti: &mut EXTI) {
+    fn disable_interrupt(&mut self) {
+        let exti = unsafe { EXTI::steal() };
         exti.imr()
             .modify(|r, w| unsafe { w.bits(r.bits() & !(1 << self.pin_id())) });
     }
 
     /// Clear the interrupt pending bit for this pin
     fn clear_interrupt_pending_bit(&mut self) {
-        unsafe { (*EXTI::ptr()).pr().write(|w| w.bits(1 << self.pin_id())) };
+        unsafe { EXTI::steal().pr().write(|w| w.bits(1 << self.pin_id())) };
     }
 
     /// Reads the interrupt pending bit for this pin
     fn check_interrupt(&self) -> bool {
-        unsafe { ((*EXTI::ptr()).pr().read().bits() & (1 << self.pin_id())) != 0 }
+        unsafe { (EXTI::steal().pr().read().bits() & (1 << self.pin_id())) != 0 }
     }
 }
 
@@ -739,6 +742,14 @@ where
     pub fn into_dynamic(mut self, cr: &mut <Self as HL>::Cr) -> Pin<P, N, Dynamic> {
         self.mode::<Input<Floating>>(cr);
         Pin::new()
+    }
+}
+
+impl<const P: char, const N: u8, PULL: UpMode> Steal for Pin<P, N, Input<PULL>> {
+    unsafe fn steal(&self) -> Self {
+        Pin::<P, N, Input<PULL>> {
+            mode: self.mode.clone(),
+        }
     }
 }
 

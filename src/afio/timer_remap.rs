@@ -148,7 +148,7 @@ impl TimCh1Pin<RemapFull<TIM9>> for PE5<Alternate<PushPull>> {}
 #[cfg(feature = "xl")]
 impl TimCh2Pin<RemapFull<TIM9>> for PE6<Alternate<PushPull>> {}
 
-// Register operation ------------
+// Register operations ------------
 
 #[cfg(any(feature = "stm32f100", feature = "stm32f103", feature = "connectivity"))]
 impl RemapMode<TIM1> for RemapDefault<TIM1> {

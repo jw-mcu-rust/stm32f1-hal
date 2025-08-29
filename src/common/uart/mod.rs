@@ -189,7 +189,7 @@ impl embedded_io::Error for Error {
             Error::FrameFormat => e_io::ErrorKind::InvalidData,
             Error::Parity => e_io::ErrorKind::InvalidData,
             Error::Noise => e_io::ErrorKind::InvalidData,
-            Error::Busy => e_io::ErrorKind::Interrupted,
+            Error::Busy => e_io::ErrorKind::WriteZero,
             Error::Other => e_io::ErrorKind::Other,
         }
     }

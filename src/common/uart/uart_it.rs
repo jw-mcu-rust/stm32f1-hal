@@ -18,18 +18,23 @@ impl<U> UartInterruptTx<U>
 where
     U: UartPeriph,
 {
-    pub(super) fn new(
-        uart: U,
-        w: Producer<u8>,
+    pub fn new(
+        uart: [U; 2],
+        buf_size: usize,
         transmit_retry_times: u32,
         flush_retry_times: u32,
-    ) -> Self {
-        Self {
-            uart,
-            w,
-            transmit_retry_times,
-            flush_retry_times,
-        }
+    ) -> (Self, UartInterruptTxHandler<U>) {
+        let [uart, u2] = uart;
+        let (w, r) = RingBuffer::<u8>::new(buf_size);
+        (
+            Self {
+                uart,
+                w,
+                transmit_retry_times,
+                flush_retry_times,
+            },
+            UartInterruptTxHandler::new(u2, r),
+        )
     }
 }
 
@@ -92,7 +97,7 @@ impl<U> UartInterruptTxHandler<U>
 where
     U: UartPeriph,
 {
-    pub(super) fn new(uart: U, r: Consumer<u8>) -> Self {
+    pub fn new(uart: U, r: Consumer<u8>) -> Self {
         Self { uart, r }
     }
 }
@@ -124,12 +129,21 @@ impl<U> UartInterruptRx<U>
 where
     U: UartPeriph,
 {
-    pub(super) fn new(uart: U, r: Consumer<u8>, retry_times: u32) -> Self {
-        Self {
-            uart,
-            r,
-            retry_times,
-        }
+    pub fn new(
+        uart: [U; 2],
+        buf_size: usize,
+        retry_times: u32,
+    ) -> (Self, UartInterruptRxHandler<U>) {
+        let [uart, u2] = uart;
+        let (w, r) = RingBuffer::<u8>::new(buf_size);
+        (
+            Self {
+                uart,
+                r,
+                retry_times,
+            },
+            UartInterruptRxHandler::new(u2, w),
+        )
     }
 }
 
@@ -170,7 +184,7 @@ impl<U> UartInterruptRxHandler<U>
 where
     U: UartPeriph,
 {
-    pub(super) fn new(mut uart: U, w: Producer<u8>) -> Self {
+    pub fn new(mut uart: U, w: Producer<u8>) -> Self {
         uart.set_interrupt(UartEvent::RxNotEmpty, true);
         Self {
             uart,

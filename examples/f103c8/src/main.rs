@@ -93,6 +93,9 @@ fn main() -> ! {
         &all_it::USART1_CB,
     );
 
+    let dma1 = dp.DMA1.split(&mut mcu.rcc);
+    let dma_rx = dma1.5;
+
     // LED --------------------------------------
 
     let mut led = gpiob

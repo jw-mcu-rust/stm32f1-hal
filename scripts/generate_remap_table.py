@@ -2,7 +2,8 @@ import csv
 import os
 import pprint
 import subprocess
-from io import TextIOWrapper
+
+from base import Write
 
 DRY_RUN = False
 SCRIPT = os.path.relpath(__file__, os.getcwd()).replace("\\", "/")
@@ -32,25 +33,6 @@ CFG_TABLE = {
     "TIM16": '#[cfg(feature = "stm32f100")]',
     "TIM17": '#[cfg(feature = "stm32f100")]',
 }
-
-
-class Write:
-    def __init__(self, file_name: str) -> None:
-        if DRY_RUN:
-            self.f = None
-        else:
-            self.f = open(file_name, "w", encoding="utf-8")
-
-    def write(self, content: str) -> None:
-        if self.f:
-            self.f.write(content)
-        else:
-            print(content, end="")
-
-    def close(self) -> None:
-        if self.f:
-            self.f.close()
-            self.f = None
 
 
 def match_filter(filter: str, name: str) -> bool:
@@ -149,7 +131,7 @@ def write_table(d: dict, filter: str, csv_file: str, target_file: str) -> None:
         before = code[:i]
         code = code[i:]
 
-    w = Write(target_file)
+    w = Write(target_file, DRY_RUN)
     w.write(before)
     w.write("\n// Do NOT manually modify the code.\n")
     w.write(

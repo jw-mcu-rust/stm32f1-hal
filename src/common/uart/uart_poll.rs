@@ -14,7 +14,7 @@ pub struct UartPollTx<U> {
 }
 
 impl<U: UartPeriph> UartPollTx<U> {
-    pub(super) fn new(uart: U, retry_times: u32, flush_retry_times: u32) -> Self {
+    pub fn new(uart: U, retry_times: u32, flush_retry_times: u32) -> Self {
         Self {
             uart,
             retry_times,
@@ -101,7 +101,7 @@ pub struct UartPollRx<U> {
 }
 
 impl<U: UartPeriph> UartPollRx<U> {
-    pub(super) fn new(uart: U, retry_times: u32, continue_retry_times: u32) -> Self {
+    pub fn new(uart: U, retry_times: u32, continue_retry_times: u32) -> Self {
         Self {
             uart,
             retry_times,

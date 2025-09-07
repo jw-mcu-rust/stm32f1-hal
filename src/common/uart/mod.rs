@@ -1,106 +1,19 @@
-use crate::ringbuf::{Consumer, Producer, RingBuffer};
+mod uart_dma_ringbuf_rx;
+pub use uart_dma_ringbuf_rx::*;
+mod uart_it;
+pub use uart_it::*;
+mod uart_poll;
+pub use uart_poll::*;
+
 use embedded_hal_nb as e_nb;
 use embedded_io as e_io;
 
-mod uart_it;
-mod uart_poll;
-
 pub use core::convert::Infallible;
-pub use uart_it::*;
-pub use uart_poll::*;
 
 // pub mod uart_dma_tx;
 // pub use uart_dma_tx::*;
-// pub mod uart_dma_ringbuf_rx;
-// pub use uart_dma_ringbuf_rx::*;
 // pub mod uart_dma_ringbuf_tx;
 // pub use uart_dma_ringbuf_tx::*;
-
-/// UART Transmitter
-pub struct Tx<U> {
-    uart: [U; 2],
-}
-
-impl<U: UartPeriph> Tx<U> {
-    pub(crate) fn new(uart: [U; 2]) -> Self {
-        Self { uart }
-    }
-
-    // pub fn get_interrupt_handler(&self) -> UartInterrupt<U> {
-    //     UartInterrupt::new(unsafe { self.uart.steal_mut() })
-    // }
-
-    pub fn into_poll(self, retry_times: u32, flush_retry_times: u32) -> UartPollTx<U> {
-        let [uart, _] = self.uart;
-        UartPollTx::<U>::new(uart, retry_times, flush_retry_times)
-    }
-
-    pub fn into_interrupt(
-        self,
-        buf_size: usize,
-        transmit_retry_times: u32,
-        flush_retry_times: u32,
-    ) -> (UartInterruptTx<U>, UartInterruptTxHandler<U>) {
-        let (w, r) = RingBuffer::<u8>::new(buf_size);
-        let [u1, u2] = self.uart;
-        (
-            UartInterruptTx::new(u1, w, transmit_retry_times, flush_retry_times),
-            UartInterruptTxHandler::new(u2, r),
-        )
-    }
-
-    // pub fn into_dma<CH>(self, dma_ch: CH) -> UartDmaTx<U, CH>
-    // where
-    //     CH: BindDmaTx<U>,
-    // {
-    //     UartDmaTx::<U, CH>::new(self.uart, dma_ch)
-    // }
-
-    // pub fn into_dma_ringbuf<CH>(self, dma_ch: CH, buf_size: usize) -> UartDmaBufTx<U, CH>
-    // where
-    //     CH: BindDmaTx<U>,
-    // {
-    //     UartDmaBufTx::<U, CH>::new(self.uart, dma_ch, buf_size)
-    // }
-}
-
-// ------------------------------------------------------------------------------------------------
-
-/// UART Receiver
-pub struct Rx<U: UartPeriph> {
-    uart: [U; 2],
-}
-
-impl<U: UartPeriph> Rx<U> {
-    pub(crate) fn new(uart: [U; 2]) -> Self {
-        Self { uart }
-    }
-
-    pub fn into_poll(self, retry_times: u32, continue_retry_times: u32) -> UartPollRx<U> {
-        let [uart, _] = self.uart;
-        UartPollRx::<U>::new(uart, retry_times, continue_retry_times)
-    }
-
-    pub fn into_interrupt(
-        self,
-        buf_size: usize,
-        retry_times: u32,
-    ) -> (UartInterruptRx<U>, UartInterruptRxHandler<U>) {
-        let (w, r) = RingBuffer::<u8>::new(buf_size);
-        let [u1, u2] = self.uart;
-        (
-            UartInterruptRx::new(u1, r, retry_times),
-            UartInterruptRxHandler::new(u2, w),
-        )
-    }
-
-    // pub fn into_dma_circle<CH>(self, dma_ch: CH, buf_size: usize) -> UartDmaBufRx<U, CH>
-    // where
-    //     CH: BindDmaRx<U>,
-    // {
-    //     UartDmaBufRx::<U, CH>::new(self.uart, dma_ch, buf_size)
-    // }
-}
 
 // ------------------------------------------------------------------------------------------------
 

@@ -6,6 +6,7 @@ pub mod afio;
 pub mod backup_domain;
 pub mod bb;
 pub mod common;
+pub mod dma;
 pub mod flash;
 pub mod gpio;
 pub mod interrupt;

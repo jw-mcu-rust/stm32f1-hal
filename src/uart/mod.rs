@@ -10,6 +10,7 @@ pub use crate::common::uart::*;
 use crate::{
     Steal,
     afio::{RemapMode, uart_remap::*},
+    common::os::*,
     dma::{DmaBindRx, DmaBindTx, DmaRingbufTxLoader},
     rcc::{BusClock, Enable, Reset},
 };
@@ -66,8 +67,8 @@ impl<U: UartPeriphExt> Tx<U> {
         Self { uart }
     }
 
-    pub fn into_poll(self, retry_times: u32, flush_retry_times: u32) -> UartPollTx<U> {
-        UartPollTx::<U>::new(self.uart, retry_times, flush_retry_times)
+    pub fn into_poll<T: Timeout>(self, timeout: T, flush_retry_times: u32) -> UartPollTx<U, T> {
+        UartPollTx::<U, T>::new(self.uart, timeout, flush_retry_times)
     }
 
     pub fn into_interrupt(
@@ -116,8 +117,8 @@ impl<U: UartPeriphExt> Rx<U> {
         Self { uart }
     }
 
-    pub fn into_poll(self, retry_times: u32, continue_retry_times: u32) -> UartPollRx<U> {
-        UartPollRx::<U>::new(self.uart, retry_times, continue_retry_times)
+    pub fn into_poll<T: Timeout>(self, timeout: T, continue_retry_times: u32) -> UartPollRx<U, T> {
+        UartPollRx::<U, T>::new(self.uart, timeout, continue_retry_times)
     }
 
     pub fn into_interrupt(

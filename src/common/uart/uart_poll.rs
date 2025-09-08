@@ -1,38 +1,38 @@
 //! It doesn't depend on DMA or interrupts, relying instead on continuous polling.
 
 use super::*;
-use crate::common::os;
+use crate::common::os::*;
 use embedded_hal_nb as e_nb;
 use embedded_io as e_io;
 
 // TX -------------------------------------------------------------------------
 
-pub struct UartPollTx<U> {
+pub struct UartPollTx<U, T> {
     uart: U,
-    retry_times: u32,
+    timeout: T,
     flush_retry_times: u32,
 }
 
-impl<U: UartPeriph> UartPollTx<U> {
-    pub fn new(uart: U, retry_times: u32, flush_retry_times: u32) -> Self {
+impl<U: UartPeriph, T: Timeout> UartPollTx<U, T> {
+    pub fn new(uart: U, timeout: T, flush_retry_times: u32) -> Self {
         Self {
             uart,
-            retry_times,
+            timeout,
             flush_retry_times,
         }
     }
 }
 
-impl<U: UartPeriph> e_nb::serial::ErrorType for UartPollTx<U> {
+impl<U: UartPeriph, T: Timeout> e_nb::serial::ErrorType for UartPollTx<U, T> {
     type Error = Error;
 }
-impl<U: UartPeriph> e_io::ErrorType for UartPollTx<U> {
+impl<U: UartPeriph, T: Timeout> e_io::ErrorType for UartPollTx<U, T> {
     type Error = Error;
 }
 
 // NB Write ----
 
-impl<U: UartPeriph> e_nb::serial::Write<u16> for UartPollTx<U> {
+impl<U: UartPeriph, T: Timeout> e_nb::serial::Write<u16> for UartPollTx<U, T> {
     #[inline]
     fn write(&mut self, word: u16) -> nb::Result<(), Self::Error> {
         self.uart.write(word)
@@ -49,7 +49,7 @@ impl<U: UartPeriph> e_nb::serial::Write<u16> for UartPollTx<U> {
 
 // IO Write ----
 
-impl<U: UartPeriph> e_io::Write for UartPollTx<U> {
+impl<U: UartPeriph, T: Timeout> e_io::Write for UartPollTx<U, T> {
     fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
         if buf.len() == 0 {
             return Err(Error::Other);
@@ -57,10 +57,11 @@ impl<U: UartPeriph> e_io::Write for UartPollTx<U> {
 
         // try first data
         let mut rst = Err(nb::Error::WouldBlock);
-        for _ in 0..=self.retry_times {
+        let mut t = self.timeout.start();
+        while !t.timeout() {
             rst = self.uart.write(buf[0] as u16);
             if let Err(nb::Error::WouldBlock) = rst {
-                os::yield_cpu();
+                t.interval();
             } else {
                 break;
             }
@@ -86,7 +87,7 @@ impl<U: UartPeriph> e_io::Write for UartPollTx<U> {
             if self.uart.is_tx_empty() && self.uart.is_tx_complete() {
                 return Ok(());
             }
-            os::yield_cpu();
+            yield_cpu();
         }
         Err(Error::Other)
     }
@@ -94,32 +95,32 @@ impl<U: UartPeriph> e_io::Write for UartPollTx<U> {
 
 // RX -------------------------------------------------------------------------
 
-pub struct UartPollRx<U> {
+pub struct UartPollRx<U, T> {
     uart: U,
-    retry_times: u32,
+    timeout: T,
     continue_retry_times: u32,
 }
 
-impl<U: UartPeriph> UartPollRx<U> {
-    pub fn new(uart: U, retry_times: u32, continue_retry_times: u32) -> Self {
+impl<U: UartPeriph, T: Timeout> UartPollRx<U, T> {
+    pub fn new(uart: U, timeout: T, continue_retry_times: u32) -> Self {
         Self {
             uart,
-            retry_times,
+            timeout,
             continue_retry_times,
         }
     }
 }
 
-impl<U: UartPeriph> e_nb::serial::ErrorType for UartPollRx<U> {
+impl<U: UartPeriph, T: Timeout> e_nb::serial::ErrorType for UartPollRx<U, T> {
     type Error = Error;
 }
-impl<U: UartPeriph> e_io::ErrorType for UartPollRx<U> {
+impl<U: UartPeriph, T: Timeout> e_io::ErrorType for UartPollRx<U, T> {
     type Error = Error;
 }
 
 // NB Read ----
 
-impl<U: UartPeriph> e_nb::serial::Read<u16> for UartPollRx<U> {
+impl<U: UartPeriph, T: Timeout> e_nb::serial::Read<u16> for UartPollRx<U, T> {
     #[inline]
     fn read(&mut self) -> nb::Result<u16, Self::Error> {
         self.uart.read()
@@ -128,7 +129,7 @@ impl<U: UartPeriph> e_nb::serial::Read<u16> for UartPollRx<U> {
 
 // IO Read ----
 
-impl<U: UartPeriph> e_io::Read for UartPollRx<U> {
+impl<U: UartPeriph, T: Timeout> e_io::Read for UartPollRx<U, T> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
         if buf.len() == 0 {
             return Err(Error::Other);
@@ -136,10 +137,11 @@ impl<U: UartPeriph> e_io::Read for UartPollRx<U> {
 
         // try first data
         let mut rst = Err(nb::Error::WouldBlock);
-        for _ in 0..=self.retry_times {
+        let mut t = self.timeout.start();
+        while !t.timeout() {
             rst = self.uart.read();
             if let Err(nb::Error::WouldBlock) = rst {
-                os::yield_cpu();
+                t.interval();
             } else {
                 break;
             }
@@ -165,7 +167,7 @@ impl<U: UartPeriph> e_io::Read for UartPollRx<U> {
                         return Ok(n);
                     }
                     retry += 1;
-                    os::yield_cpu();
+                    yield_cpu();
                 }
             }
         }

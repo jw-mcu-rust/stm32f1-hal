@@ -15,6 +15,7 @@ use stm32f1_hal::{
     embedded_io,
     gpio::{Edge, ExtiPin, PinState},
     nvic_scb::PriorityGrouping,
+    os::RetryTimes,
     pac::{self, Interrupt},
     prelude::*,
     rcc,
@@ -156,7 +157,10 @@ fn uart_poll_init<U: UartPeriphExt>(
     tx: uart::Tx<U>,
     rx: uart::Rx<U>,
 ) -> UartPollTask<impl embedded_io::Write, impl embedded_io::Read> {
-    let (uart_tx, uart_rx) = (tx.into_poll(0, 10_000), rx.into_poll(0, 1_000));
+    let (uart_tx, uart_rx) = (
+        tx.into_poll(RetryTimes::new(0), 10_000),
+        rx.into_poll(RetryTimes::new(0), 1_000),
+    );
     UartPollTask::new(32, uart_tx, uart_rx)
 }
 

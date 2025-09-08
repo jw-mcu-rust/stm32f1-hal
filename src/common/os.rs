@@ -19,8 +19,11 @@ pub trait Timeout {
 
 pub trait TimeoutInstance {
     fn timeout(&mut self) -> bool;
+    fn restart(&mut self);
     fn interval(&self);
 }
+
+// Retry ----------------------------------
 
 pub struct RetryTimes {
     retry_times: usize,
@@ -54,6 +57,40 @@ impl TimeoutInstance for RetryTimesInstance {
             true
         }
     }
+
+    #[inline(always)]
+    fn restart(&mut self) {
+        self.count = 0;
+    }
+
+    #[inline(always)]
+    fn interval(&self) {}
+}
+
+// Always ----------------------------------
+
+pub struct AlwaysTimeout {}
+impl AlwaysTimeout {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+impl Timeout for AlwaysTimeout {
+    #[inline]
+    fn start(&mut self) -> impl TimeoutInstance {
+        AlwaysTimeoutInstance {}
+    }
+}
+
+pub struct AlwaysTimeoutInstance {}
+impl TimeoutInstance for AlwaysTimeoutInstance {
+    #[inline(always)]
+    fn timeout(&mut self) -> bool {
+        true
+    }
+
+    #[inline(always)]
+    fn restart(&mut self) {}
 
     #[inline(always)]
     fn interval(&self) {}

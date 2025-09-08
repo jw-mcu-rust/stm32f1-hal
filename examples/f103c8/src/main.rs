@@ -15,11 +15,11 @@ use stm32f1_hal::{
     embedded_io,
     gpio::{Edge, ExtiPin, PinState},
     nvic_scb::PriorityGrouping,
-    os::RetryTimes,
+    os::{RetryTimes, Timeout},
     pac::{self, Interrupt},
     prelude::*,
     rcc,
-    timer::*,
+    timer::{syst::SysTickTimeout, *},
     uart::{self, UartPeriphExt},
 };
 
@@ -105,10 +105,9 @@ fn main() -> ! {
     let mut led = gpiob
         .pb0
         .into_open_drain_output_with_state(&mut gpiob.crl, PinState::High);
-    let mut timer = cp.SYST.counter_hz(&mcu);
-    let freq = 100.Hz();
-    timer.start(freq).unwrap();
-    let mut led_task = LedTask::new(led, freq.raw());
+    cp.SYST.counter_hz(&mcu).start(1000.Hz()).unwrap();
+    let mut timeout = SysTickTimeout::new(1000_000);
+    let mut led_task = LedTask::new(led, timeout.start());
 
     // PWM --------------------------------------
 
@@ -140,9 +139,7 @@ fn main() -> ! {
     });
 
     loop {
-        if timer.wait().is_ok() {
-            led_task.poll();
-        }
+        led_task.poll();
         uart_task.poll();
     }
 }

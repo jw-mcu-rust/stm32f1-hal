@@ -1,11 +1,37 @@
 //! SysTick: System Timer
 
 use super::*;
-use crate::{Mcu, time::Hertz};
+use crate::{Mcu, os::*, time::Hertz};
 use core::ops::{Deref, DerefMut};
 use cortex_m::peripheral::{SYST, syst::SystClkSource};
 use embedded_hal::delay::DelayNs;
 use fugit::{ExtU32Ceil, MicrosDurationU32, TimerDurationU32, TimerInstantU32};
+
+pub trait SysTimerInit: Sized {
+    /// Creates timer which takes [Hertz] as Duration
+    fn counter_hz(self, mcu: &Mcu) -> SysCounterHz;
+
+    /// Creates timer with custom precision (core frequency recommended is known)
+    fn counter<const FREQ: u32>(self, mcu: &Mcu) -> SysCounter<FREQ>;
+    /// Creates timer with precision of 1 μs (1 MHz sampling)
+    fn counter_us(self, mcu: &Mcu) -> SysCounterUs {
+        self.counter::<1_000_000>(mcu)
+    }
+    /// Blocking [Delay] with custom precision
+    fn delay(self, mcu: &Mcu) -> SysDelay;
+}
+
+impl SysTimerInit for SYST {
+    fn counter_hz(self, mcu: &Mcu) -> SysCounterHz {
+        SystemTimer::syst(self, mcu).counter_hz()
+    }
+    fn counter<const FREQ: u32>(self, mcu: &Mcu) -> SysCounter<FREQ> {
+        SystemTimer::syst(self, mcu).counter()
+    }
+    fn delay(self, mcu: &Mcu) -> SysDelay {
+        SystemTimer::syst_external(self, mcu).delay()
+    }
+}
 
 pub struct SystemTimer {
     pub(super) syst: SYST,
@@ -53,32 +79,6 @@ impl SystemTimer {
         // According to the Cortex-M3 Generic User Guide, the interrupt request is only generated
         // when the counter goes from 1 to 0, so writing zero should not trigger an interrupt
         self.syst.clear_current();
-    }
-}
-
-pub trait SysTimerInit: Sized {
-    /// Creates timer which takes [Hertz] as Duration
-    fn counter_hz(self, mcu: &Mcu) -> SysCounterHz;
-
-    /// Creates timer with custom precision (core frequency recommended is known)
-    fn counter<const FREQ: u32>(self, mcu: &Mcu) -> SysCounter<FREQ>;
-    /// Creates timer with precision of 1 μs (1 MHz sampling)
-    fn counter_us(self, mcu: &Mcu) -> SysCounterUs {
-        self.counter::<1_000_000>(mcu)
-    }
-    /// Blocking [Delay] with custom precision
-    fn delay(self, mcu: &Mcu) -> SysDelay;
-}
-
-impl SysTimerInit for SYST {
-    fn counter_hz(self, mcu: &Mcu) -> SysCounterHz {
-        SystemTimer::syst(self, mcu).counter_hz()
-    }
-    fn counter<const FREQ: u32>(self, mcu: &Mcu) -> SysCounter<FREQ> {
-        SystemTimer::syst(self, mcu).counter()
-    }
-    fn delay(self, mcu: &Mcu) -> SysDelay {
-        SystemTimer::syst_external(self, mcu).delay()
     }
 }
 
@@ -311,4 +311,81 @@ impl DelayNs for SysDelay {
     fn delay_ms(&mut self, ms: u32) {
         self.delay(ms.millis_at_least());
     }
+}
+
+// ----------------------------------------------------------------------------
+
+/// SysTick must be set to 1 kHz frequency
+pub struct SysTickTimeout {
+    timeout_us: usize,
+}
+impl SysTickTimeout {
+    pub fn new(timeout_us: usize) -> Self {
+        Self { timeout_us }
+    }
+}
+impl Timeout for SysTickTimeout {
+    fn start(&mut self) -> impl TimeoutInstance {
+        let now = SYST::get_current() as usize;
+        let reload = SYST::get_reload() as usize;
+        let round = self.timeout_us / 1000;
+        let us = self.timeout_us % 1000;
+
+        SysTickTimeoutInstance {
+            former_tick: now,
+            timeout_tick: us * reload / 1000,
+            elapsed_tick: 0,
+            round_backup: round,
+            round,
+        }
+    }
+}
+
+pub struct SysTickTimeoutInstance {
+    former_tick: usize,
+    timeout_tick: usize,
+    elapsed_tick: usize,
+    round: usize,
+    round_backup: usize,
+}
+impl SysTickTimeoutInstance {
+    fn elapsed(&mut self) -> usize {
+        let now = SYST::get_current() as usize;
+        let elapsed = if now <= self.former_tick {
+            self.former_tick - now
+        } else {
+            self.former_tick + (SYST::get_reload() as usize - now)
+        };
+        self.former_tick = now;
+        elapsed
+    }
+}
+impl TimeoutInstance for SysTickTimeoutInstance {
+    fn timeout(&mut self) -> bool {
+        self.elapsed_tick += self.elapsed();
+
+        if self.round == 0 {
+            if self.elapsed_tick >= self.timeout_tick {
+                self.elapsed_tick -= self.timeout_tick;
+                self.round = self.round_backup;
+                return true;
+            }
+        } else {
+            let reload = SYST::get_reload() as usize;
+            if self.elapsed_tick >= reload {
+                self.elapsed_tick -= reload;
+                self.round -= 1;
+            }
+        }
+        false
+    }
+
+    #[inline(always)]
+    fn restart(&mut self) {
+        self.round = self.round_backup;
+        self.elapsed_tick = 0;
+    }
+
+    #[inline(always)]
+    fn interval(&self) {}
 }

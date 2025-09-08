@@ -1,25 +1,19 @@
 use crate::embedded_hal::digital::StatefulOutputPin;
+use crate::hal::os::TimeoutInstance;
 
-pub struct LedTask<P> {
+pub struct LedTask<P, T> {
     led: P,
-    freq: u32,
-    count: u32,
+    timeout: T,
 }
 
-impl<P: StatefulOutputPin> LedTask<P> {
-    pub fn new(led: P, freq: u32) -> Self {
-        Self {
-            led,
-            freq,
-            count: 0,
-        }
+impl<P: StatefulOutputPin, T: TimeoutInstance> LedTask<P, T> {
+    pub fn new(led: P, timeout: T) -> Self {
+        Self { led, timeout }
     }
 
     pub fn poll(&mut self) {
-        self.count += 1;
-        if self.count >= self.freq {
+        if self.timeout.timeout() {
             self.led.toggle().ok();
-            self.count = 0;
         }
     }
 }

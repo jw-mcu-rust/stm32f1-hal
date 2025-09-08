@@ -154,10 +154,8 @@ fn uart_poll_init<U: UartPeriphExt>(
     tx: uart::Tx<U>,
     rx: uart::Rx<U>,
 ) -> UartPollTask<impl embedded_io::Write, impl embedded_io::Read> {
-    let (uart_tx, uart_rx) = (
-        tx.into_poll(RetryTimes::new(0), 10_000),
-        rx.into_poll(RetryTimes::new(0), 1_000),
-    );
+    let uart_rx = rx.into_poll(RetryTimes::new(0), RetryTimes::new(1_000));
+    let uart_tx = tx.into_poll(RetryTimes::new(0), RetryTimes::new(10_000));
     UartPollTask::new(32, uart_tx, uart_rx)
 }
 
@@ -167,8 +165,9 @@ fn uart_interrupt_init<U: UartPeriphExt + 'static>(
     interrupt_callback: &hal::interrupt::Callback,
     mcu: &mut Mcu,
 ) -> UartPollTask<impl embedded_io::Write + 'static, impl embedded_io::Read + 'static> {
-    let (tx, mut tx_it) = tx.into_interrupt(64, 0, 10_000);
-    let (rx, mut rx_it) = rx.into_interrupt(64, 0);
+    let (rx, mut rx_it) = rx.into_interrupt(64, SysTickTimeout::new(100));
+    let (tx, mut tx_it) =
+        tx.into_interrupt(64, SysTickTimeout::new(0), SysTickTimeout::new(20_000));
     interrupt_callback.set(mcu, move || {
         rx_it.handler();
         tx_it.handler();
@@ -184,9 +183,14 @@ fn uart_dma_init<'r, U: UartPeriphExt + 'static>(
     dma_rx: impl DmaBindRx<U> + 'r,
     mcu: &mut Mcu,
 ) -> UartPollTask<impl embedded_io::Write + 'static, impl embedded_io::Read + 'r> {
-    let uart_rx = rx.into_dma_circle(dma_rx, 64);
+    let uart_rx = rx.into_dma_circle(dma_rx, 64, SysTickTimeout::new(100));
     dma_tx.set_interrupt(DmaEvent::TransferComplete, true);
-    let (uart_tx, mut tx_it) = tx.into_dma_ringbuf(dma_tx, 32);
+    let (uart_tx, mut tx_it) = tx.into_dma_ringbuf(
+        dma_tx,
+        32,
+        SysTickTimeout::new(0),
+        SysTickTimeout::new(20_000),
+    );
     interrupt_callback.set(mcu, move || {
         tx_it.interrupt_reload();
     });

@@ -1,28 +1,29 @@
 //! UART interrupt implementation
 
 use super::*;
-use crate::common::os;
+use crate::common::os::*;
 use crate::ringbuf::*;
 use embedded_io::{ErrorType, Read, Write};
 
 // TX -------------------------------------------------------------------------
 
-pub struct UartInterruptTx<U> {
+pub struct UartInterruptTx<U, T> {
     uart: U,
     w: Producer<u8>,
-    transmit_retry_times: u32,
-    flush_retry_times: u32,
+    timeout: T,
+    flush_timeout: T,
 }
 
-impl<U> UartInterruptTx<U>
+impl<U, T> UartInterruptTx<U, T>
 where
     U: UartPeriph,
+    T: Timeout,
 {
     pub fn new(
         uart: [U; 2],
         buf_size: usize,
-        transmit_retry_times: u32,
-        flush_retry_times: u32,
+        timeout: T,
+        flush_timeout: T,
     ) -> (Self, UartInterruptTxHandler<U>) {
         let [uart, u2] = uart;
         let (w, r) = RingBuffer::<u8>::new(buf_size);
@@ -30,59 +31,59 @@ where
             Self {
                 uart,
                 w,
-                transmit_retry_times,
-                flush_retry_times,
+                timeout,
+                flush_timeout,
             },
             UartInterruptTxHandler::new(u2, r),
         )
     }
 }
 
-impl<U: UartPeriph> ErrorType for UartInterruptTx<U> {
+impl<U: UartPeriph, T: Timeout> ErrorType for UartInterruptTx<U, T> {
     type Error = Error;
 }
 
-impl<U: UartPeriph> Write for UartInterruptTx<U> {
+impl<U: UartPeriph, T: Timeout> Write for UartInterruptTx<U, T> {
     fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
         if buf.len() == 0 {
             return Err(Error::Other);
         }
 
-        for _ in 0..=self.transmit_retry_times {
+        let mut t = self.timeout.start();
+        loop {
             if let n @ 1.. = self.w.push_slice(buf) {
                 self.uart.set_interrupt(UartEvent::TxEmpty, true);
                 return Ok(n);
             } else if !self.uart.is_interrupt_enable(UartEvent::TxEmpty) {
                 self.uart.set_interrupt(UartEvent::TxEmpty, true);
             }
-            os::yield_cpu();
+
+            if t.timeout() {
+                break;
+            }
+            t.interval();
         }
         return Err(Error::Busy);
     }
 
     fn flush(&mut self) -> Result<(), Self::Error> {
-        let mut retry = 0;
-        let mut rest = 0;
+        let mut t = self.flush_timeout.start();
         loop {
-            if self.uart.is_tx_empty() && self.uart.is_tx_complete() {
+            if self.uart.is_tx_empty()
+                && self.uart.is_tx_complete()
+                && self.w.slots() == self.w.buffer().capacity()
+            {
                 return Ok(());
             } else {
-                let tmp = self.w.slots();
-                if rest != tmp {
-                    rest = tmp;
-                    retry = 0;
-                } else {
-                    // unchanged
-                    retry += 1;
-                    if retry > self.flush_retry_times {
-                        return Err(Error::Other);
-                    } else if !self.uart.is_interrupt_enable(UartEvent::TxEmpty) {
-                        self.uart.set_interrupt(UartEvent::TxEmpty, true);
-                    }
+                if t.timeout() {
+                    break;
+                } else if !self.uart.is_interrupt_enable(UartEvent::TxEmpty) {
+                    self.uart.set_interrupt(UartEvent::TxEmpty, true);
                 }
-                os::yield_cpu();
+                t.interval();
             }
         }
+        Err(Error::Other)
     }
 }
 
@@ -119,54 +120,53 @@ where
 
 // RX -------------------------------------------------------------------------
 
-pub struct UartInterruptRx<U> {
+pub struct UartInterruptRx<U, T> {
     uart: U,
     r: Consumer<u8>,
-    retry_times: u32,
+    timeout: T,
 }
 
-impl<U> UartInterruptRx<U>
+impl<U, T> UartInterruptRx<U, T>
 where
     U: UartPeriph,
+    T: Timeout,
 {
-    pub fn new(
-        uart: [U; 2],
-        buf_size: usize,
-        retry_times: u32,
-    ) -> (Self, UartInterruptRxHandler<U>) {
+    pub fn new(uart: [U; 2], buf_size: usize, timeout: T) -> (Self, UartInterruptRxHandler<U>) {
         let [uart, u2] = uart;
         let (w, r) = RingBuffer::<u8>::new(buf_size);
         (
-            Self {
-                uart,
-                r,
-                retry_times,
-            },
+            Self { uart, r, timeout },
             UartInterruptRxHandler::new(u2, w),
         )
     }
 }
 
-impl<U: UartPeriph> ErrorType for UartInterruptRx<U> {
+impl<U: UartPeriph, T: Timeout> ErrorType for UartInterruptRx<U, T> {
     type Error = Error;
 }
 
-impl<U> Read for UartInterruptRx<U>
+impl<U, T> Read for UartInterruptRx<U, T>
 where
     U: UartPeriph,
+    T: Timeout,
 {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
         if buf.len() == 0 {
             return Err(Error::Other);
         }
 
-        for _ in 0..=self.retry_times {
+        let mut t = self.timeout.start();
+        loop {
             if let n @ 1.. = self.r.pop_slice(buf) {
                 return Ok(n);
             } else if !self.uart.is_interrupt_enable(UartEvent::RxNotEmpty) {
                 self.uart.set_interrupt(UartEvent::RxNotEmpty, true);
             }
-            os::yield_cpu();
+
+            if t.timeout() {
+                break;
+            }
+            t.interval();
         }
         Err(Error::Other)
     }

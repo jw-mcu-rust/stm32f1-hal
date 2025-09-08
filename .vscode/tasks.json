@@ -15,7 +15,6 @@
                 "kind": "build",
                 "isDefault": true
             },
-
         },
         {
             "label": "build",
@@ -37,6 +36,19 @@
                 "f103c8"
             ],
             "group": "build",
+        },
+        {
+            "label": "Test Windows",
+            "type": "cargo",
+            "command": "test",
+            "args": [
+                "--features=std",
+                "--target=x86_64-pc-windows-msvc",
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
         }
     ]
 }

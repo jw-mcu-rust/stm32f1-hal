@@ -1,8 +1,13 @@
+mod circular_buffer_rx;
+pub use circular_buffer_rx::*;
+mod ringbuf_tx;
+pub use ringbuf_tx::*;
+
 pub trait DmaChannel {
     fn start(&mut self);
     fn stop(&mut self);
 
-    fn set_peripheral_address<T: Sized>(
+    fn set_peripheral_address<T: Sized + Copy>(
         &mut self,
         address: usize,
         mem_to_periph: bool,
@@ -11,12 +16,17 @@ pub trait DmaChannel {
     );
     fn set_memory_address(&mut self, address: usize, increase: bool);
     fn set_transfer_length(&mut self, len: usize);
-    fn set_memory_buf_for_peripheral<T: Sized>(&mut self, buf: &[T]) {
+    fn set_memory_buf_for_peripheral<T: Sized + Copy>(&mut self, buf: &[T]) {
         self.set_memory_address(buf.as_ptr() as usize, true);
         self.set_transfer_length(buf.len());
     }
 
-    fn set_memory_to_memory<T: Sized>(&mut self, src_addr: usize, dst_addr: usize, len: usize);
+    fn set_memory_to_memory<T: Sized + Copy>(
+        &mut self,
+        src_addr: usize,
+        dst_addr: usize,
+        len: usize,
+    );
 
     fn get_left_len(&self) -> usize;
     fn in_progress(&self) -> bool;

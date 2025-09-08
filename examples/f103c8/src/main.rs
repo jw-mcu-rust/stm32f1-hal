@@ -5,22 +5,21 @@
 #![allow(unused_mut)]
 
 use core::{mem::MaybeUninit, panic::PanicInfo};
-use stm32f1_hal::gpio::ExtiPin;
-use stm32f1_hal::{self as hal, Steal};
 use stm32f1_hal::{
-    Heap, Mcu,
+    self as hal, Heap, Mcu, Steal,
     afio::{NONE_PIN, RemapDefault},
     cortex_m::asm,
     cortex_m_rt::entry,
+    dma::{DmaBindRx, DmaBindTx, DmaEvent, DmaPriority},
     embedded_hal::{self, pwm::SetDutyCycle},
     embedded_io,
-    gpio::{Edge, PinState},
+    gpio::{Edge, ExtiPin, PinState},
     nvic_scb::PriorityGrouping,
     pac::{self, Interrupt},
     prelude::*,
     rcc,
     timer::*,
-    uart::{self, UartPeriph},
+    uart::{self, UartPeriphExt},
 };
 
 mod led_task;
@@ -49,9 +48,6 @@ fn main() -> ! {
     let mut rcc = dp.RCC.constrain().freeze(cfg, &mut flash.acr);
     assert_eq!(rcc.clocks.sysclk(), sysclk);
 
-    let mut gpioa = dp.GPIOA.split(&mut rcc);
-    let mut gpiob = dp.GPIOB.split(&mut rcc);
-
     let afio = dp.AFIO.constrain(&mut rcc);
     let mut mcu = Mcu {
         scb,
@@ -62,10 +58,16 @@ fn main() -> ! {
     };
 
     // Keep them in one place for easier management
-    mcu.nvic.enable(pac::interrupt::USART1, false); // Optional
+    mcu.nvic.enable(Interrupt::USART1, false); // Optional
     mcu.nvic.set_priority(Interrupt::USART1, 2);
-    mcu.nvic.enable(pac::interrupt::EXTI1, false);
+    mcu.nvic.enable(Interrupt::EXTI1, false);
     mcu.nvic.set_priority(Interrupt::EXTI1, 1);
+    mcu.nvic.enable(Interrupt::DMA1_CHANNEL4, false);
+    mcu.nvic.set_priority(Interrupt::DMA1_CHANNEL4, 2);
+
+    let mut gpioa = dp.GPIOA.split(&mut mcu.rcc);
+    let mut gpiob = dp.GPIOB.split(&mut mcu.rcc);
+    let mut dma1 = dp.DMA1.split(&mut mcu.rcc);
 
     // UART -------------------------------------
 
@@ -85,16 +87,17 @@ fn main() -> ! {
     };
 
     // let mut uart_task = uart_poll_init(uart_tx, uart_rx);
-    let mut uart_task = uart_interrupt_init(
+    // let mut uart_task = uart_interrupt_init(uart_tx, uart_rx, &all_it::USART1_CB, &mut mcu);
+    dma1.4.set_priority(DmaPriority::Medium);
+    dma1.5.set_priority(DmaPriority::Medium);
+    let mut uart_task = uart_dma_init(
         uart_tx,
+        dma1.4,
+        &all_it::DMA1_CHANNEL4_CB,
         uart_rx,
+        dma1.5,
         &mut mcu,
-        pac::interrupt::USART1,
-        &all_it::USART1_CB,
     );
-
-    let dma1 = dp.DMA1.split(&mut mcu.rcc);
-    let dma_rx = dma1.5;
 
     // LED --------------------------------------
 
@@ -149,7 +152,7 @@ fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
 
-fn uart_poll_init<U: UartPeriph>(
+fn uart_poll_init<U: UartPeriphExt>(
     tx: uart::Tx<U>,
     rx: uart::Rx<U>,
 ) -> UartPollTask<impl embedded_io::Write, impl embedded_io::Read> {
@@ -157,13 +160,12 @@ fn uart_poll_init<U: UartPeriph>(
     UartPollTask::new(32, uart_tx, uart_rx)
 }
 
-fn uart_interrupt_init<U: UartPeriph + 'static>(
+fn uart_interrupt_init<U: UartPeriphExt + 'static>(
     tx: uart::Tx<U>,
     rx: uart::Rx<U>,
-    mcu: &mut Mcu,
-    it_line: pac::interrupt,
     interrupt_callback: &hal::interrupt::Callback,
-) -> UartPollTask<impl embedded_io::Write + use<U>, impl embedded_io::Read + use<U>> {
+    mcu: &mut Mcu,
+) -> UartPollTask<impl embedded_io::Write + 'static, impl embedded_io::Read + 'static> {
     let (tx, mut tx_it) = tx.into_interrupt(64, 0, 10_000);
     let (rx, mut rx_it) = rx.into_interrupt(64, 0);
     interrupt_callback.set(mcu, move || {
@@ -173,7 +175,28 @@ fn uart_interrupt_init<U: UartPeriph + 'static>(
     UartPollTask::new(32, tx, rx)
 }
 
+fn uart_dma_init<'r, U: UartPeriphExt + 'static>(
+    tx: uart::Tx<U>,
+    mut dma_tx: impl DmaBindTx<U> + 'static,
+    interrupt_callback: &hal::interrupt::Callback,
+    rx: uart::Rx<U>,
+    dma_rx: impl DmaBindRx<U> + 'r,
+    mcu: &mut Mcu,
+) -> UartPollTask<impl embedded_io::Write + 'static, impl embedded_io::Read + 'r> {
+    let uart_rx = rx.into_dma_circle(dma_rx, 64);
+    dma_tx.set_interrupt(DmaEvent::TransferComplete, true);
+    let (uart_tx, mut tx_it) = tx.into_dma_ringbuf(dma_tx, 32);
+    interrupt_callback.set(mcu, move || {
+        tx_it.interrupt_reload();
+    });
+    UartPollTask::new(32, uart_tx, uart_rx)
+}
+
 mod all_it {
     use super::hal::{interrupt_handler, pac::interrupt};
-    interrupt_handler!((USART1, USART1_CB), (EXTI1, EXTI1_CB),);
+    interrupt_handler!(
+        (USART1, USART1_CB),
+        (EXTI1, EXTI1_CB),
+        (DMA1_CHANNEL4, DMA1_CHANNEL4_CB),
+    );
 }

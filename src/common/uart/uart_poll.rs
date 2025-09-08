@@ -1,7 +1,7 @@
 //! It doesn't depend on DMA or interrupts, relying instead on continuous polling.
 
 use super::*;
-use crate::os;
+use crate::common::os;
 use embedded_hal_nb as e_nb;
 use embedded_io as e_io;
 

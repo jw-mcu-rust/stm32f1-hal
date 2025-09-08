@@ -10,7 +10,7 @@ pub use crate::common::uart::*;
 use crate::{
     Steal,
     afio::{RemapMode, uart_remap::*},
-    dma::DmaBindRx,
+    dma::{DmaBindRx, DmaBindTx, DmaRingbufTxLoader},
     rcc::{BusClock, Enable, Reset},
 };
 
@@ -20,7 +20,7 @@ pub trait UartInit<U> {
     fn constrain(self, mcu: &mut Mcu) -> Uart<U>;
 }
 
-pub trait UartPeriphExt: UartPeriph + BusClock + Enable + Reset {
+pub trait UartPeriphExt: UartPeriph + BusClock + Enable + Reset + Steal {
     fn config(&mut self, config: Config, mcu: &mut Mcu);
     fn enable_comm(&mut self, tx: bool, rx: bool);
     fn set_stop_bits(&mut self, bits: StopBits);
@@ -31,7 +31,7 @@ pub struct Uart<U> {
     uart: U,
 }
 
-impl<U: UartPeriphExt + Steal> Uart<U> {
+impl<U: UartPeriphExt> Uart<U> {
     pub fn into_tx_rx<REMAP: RemapMode<U>>(
         mut self,
         pins: (Option<impl UartTxPin<REMAP>>, Option<impl UartRxPin<REMAP>>),
@@ -43,10 +43,8 @@ impl<U: UartPeriphExt + Steal> Uart<U> {
         self.uart.enable_comm(pins.0.is_some(), pins.1.is_some());
         unsafe {
             (
-                pins.0
-                    .map(|_| Tx::new([self.uart.steal(), self.uart.steal()])),
-                pins.1
-                    .map(|_| Rx::new([self.uart.steal(), self.uart.steal()])),
+                pins.0.map(|_| Tx::new(self.uart.steal())),
+                pins.1.map(|_| Rx::new(self.uart.steal())),
             )
         }
     }
@@ -60,17 +58,16 @@ impl<U: UartPeriphExt + Steal> Uart<U> {
 
 /// UART Transmitter
 pub struct Tx<U> {
-    uart: [U; 2],
+    uart: U,
 }
 
-impl<U: UartPeriph> Tx<U> {
-    pub(crate) fn new(uart: [U; 2]) -> Self {
+impl<U: UartPeriphExt> Tx<U> {
+    pub(crate) fn new(uart: U) -> Self {
         Self { uart }
     }
 
     pub fn into_poll(self, retry_times: u32, flush_retry_times: u32) -> UartPollTx<U> {
-        let [uart, _] = self.uart;
-        UartPollTx::<U>::new(uart, retry_times, flush_retry_times)
+        UartPollTx::<U>::new(self.uart, retry_times, flush_retry_times)
     }
 
     pub fn into_interrupt(
@@ -79,7 +76,13 @@ impl<U: UartPeriph> Tx<U> {
         transmit_retry_times: u32,
         flush_retry_times: u32,
     ) -> (UartInterruptTx<U>, UartInterruptTxHandler<U>) {
-        UartInterruptTx::new(self.uart, buf_size, transmit_retry_times, flush_retry_times)
+        let u2 = unsafe { self.uart.steal() };
+        UartInterruptTx::new(
+            [self.uart, u2],
+            buf_size,
+            transmit_retry_times,
+            flush_retry_times,
+        )
     }
 
     // pub fn into_dma<CH>(self, dma_ch: CH) -> UartDmaTx<U, CH>
@@ -89,29 +92,32 @@ impl<U: UartPeriph> Tx<U> {
     //     UartDmaTx::<U, CH>::new(self.uart, dma_ch)
     // }
 
-    // pub fn into_dma_ringbuf<CH>(self, dma_ch: CH, buf_size: usize) -> UartDmaBufTx<U, CH>
-    // where
-    //     CH: BindDmaTx<U>,
-    // {
-    //     UartDmaBufTx::<U, CH>::new(self.uart, dma_ch, buf_size)
-    // }
+    pub fn into_dma_ringbuf<CH>(
+        self,
+        dma_ch: CH,
+        buf_size: usize,
+    ) -> (UartDmaBufTx<U, CH>, DmaRingbufTxLoader<u8, CH>)
+    where
+        CH: DmaBindTx<U>,
+    {
+        UartDmaBufTx::<U, CH>::new(self.uart, dma_ch, buf_size)
+    }
 }
 
 // ------------------------------------------------------------------------------------------------
 
 /// UART Receiver
-pub struct Rx<U: UartPeriph> {
-    uart: [U; 2],
+pub struct Rx<U> {
+    uart: U,
 }
 
-impl<U: UartPeriph> Rx<U> {
-    pub(crate) fn new(uart: [U; 2]) -> Self {
+impl<U: UartPeriphExt> Rx<U> {
+    pub(crate) fn new(uart: U) -> Self {
         Self { uart }
     }
 
     pub fn into_poll(self, retry_times: u32, continue_retry_times: u32) -> UartPollRx<U> {
-        let [uart, _] = self.uart;
-        UartPollRx::<U>::new(uart, retry_times, continue_retry_times)
+        UartPollRx::<U>::new(self.uart, retry_times, continue_retry_times)
     }
 
     pub fn into_interrupt(
@@ -119,14 +125,14 @@ impl<U: UartPeriph> Rx<U> {
         buf_size: usize,
         retry_times: u32,
     ) -> (UartInterruptRx<U>, UartInterruptRxHandler<U>) {
-        UartInterruptRx::new(self.uart, buf_size, retry_times)
+        let u2 = unsafe { self.uart.steal() };
+        UartInterruptRx::new([self.uart, u2], buf_size, retry_times)
     }
 
-    pub fn into_dma_circle<CH>(self, dma_ch: CH, buf_size: usize) -> UartDmaBufRx<U, CH>
+    pub fn into_dma_circle<CH>(self, dma_ch: CH, buf_size: usize) -> UartDmaRx<U, CH>
     where
         CH: DmaBindRx<U>,
     {
-        let [uart, _] = self.uart;
-        UartDmaBufRx::<U, CH>::new(uart, dma_ch, buf_size)
+        UartDmaRx::<U, CH>::new(self.uart, dma_ch, buf_size)
     }
 }

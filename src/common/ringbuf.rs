@@ -5,7 +5,7 @@ pub use rtrb::{
 
 pub trait ProducerExt<T> {
     fn get_write_chunk_uninit(&mut self) -> Option<WriteChunkUninit<'_, T>>;
-    fn push_slice(&mut self, buf: &[T]) -> Option<usize>;
+    fn push_slice(&mut self, buf: &[T]) -> usize;
 }
 impl<T: Copy> ProducerExt<T> for Producer<T> {
     fn get_write_chunk_uninit(&mut self) -> Option<WriteChunkUninit<'_, T>> {
@@ -18,7 +18,7 @@ impl<T: Copy> ProducerExt<T> for Producer<T> {
         None
     }
 
-    fn push_slice(&mut self, buf: &[T]) -> Option<usize> {
+    fn push_slice(&mut self, buf: &[T]) -> usize {
         let mut size = self.slots();
         if size > 0 {
             let buf = if size >= buf.len() {
@@ -41,9 +41,9 @@ impl<T: Copy> ProducerExt<T> for Producer<T> {
             unsafe {
                 chunk.commit_all();
             }
-            Some(size)
+            size
         } else {
-            None
+            0
         }
     }
 }
@@ -76,7 +76,7 @@ impl<T: Copy> WriteChunkExt<T> for WriteChunkUninit<'_, T> {
 
 pub trait ConsumerExt<T> {
     fn get_read_chunk(&mut self) -> Option<ReadChunk<'_, T>>;
-    fn pop_slice(&mut self, elems: &mut [T]) -> Option<usize>;
+    fn pop_slice(&mut self, elems: &mut [T]) -> usize;
 }
 impl<T: Copy> ConsumerExt<T> for Consumer<T> {
     fn get_read_chunk(&mut self) -> Option<ReadChunk<'_, T>> {
@@ -89,7 +89,7 @@ impl<T: Copy> ConsumerExt<T> for Consumer<T> {
         None
     }
 
-    fn pop_slice(&mut self, buf: &mut [T]) -> Option<usize> {
+    fn pop_slice(&mut self, buf: &mut [T]) -> usize {
         let mut size = self.slots();
         if size > 0 {
             let buf = if size >= buf.len() {
@@ -110,9 +110,9 @@ impl<T: Copy> ConsumerExt<T> for Consumer<T> {
                 b2.copy_from_slice(c2);
             };
             chunk.commit_all();
-            Some(size)
+            size
         } else {
-            None
+            0
         }
     }
 }

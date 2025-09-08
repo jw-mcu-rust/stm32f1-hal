@@ -65,23 +65,13 @@ impl UartPeriphExt for UartX {
                 StopBits::STOP1P5 | StopBits::STOP2 => STOP::Stop2,
             })
         });
-        // sync stop_bits_u4_end
+        // sync stop_bits_end
     }
 }
 
 // Implement Peripheral -------------------------------------------------------
 
 impl UartPeriph for UartX {
-    #[inline]
-    fn set_dma_tx(&mut self, enable: bool) {
-        self.cr3().modify(|_, w| w.dmat().bit(enable));
-    }
-
-    #[inline]
-    fn set_dma_rx(&mut self, enable: bool) {
-        self.cr3().modify(|_, w| w.dmar().bit(enable));
-    }
-
     #[inline]
     fn is_tx_empty(&self) -> bool {
         self.sr().read().txe().bit_is_set()
@@ -132,13 +122,23 @@ impl UartPeriph for UartX {
     }
 
     #[inline]
-    fn get_tx_data_reg_addr(&self) -> u32 {
-        &self.dr() as *const _ as u32
+    fn get_tx_data_reg_addr(&self) -> usize {
+        self.dr().as_ptr() as usize
     }
 
     #[inline]
-    fn get_rx_data_reg_addr(&self) -> u32 {
-        &self.dr() as *const _ as u32
+    fn get_rx_data_reg_addr(&self) -> usize {
+        self.dr().as_ptr() as usize
+    }
+
+    #[inline]
+    fn enable_dma_tx(&mut self, enable: bool) {
+        self.cr3().modify(|_, w| w.dmat().bit(enable));
+    }
+
+    #[inline]
+    fn enable_dma_rx(&mut self, enable: bool) {
+        self.cr3().modify(|_, w| w.dmar().bit(enable));
     }
 
     #[inline]

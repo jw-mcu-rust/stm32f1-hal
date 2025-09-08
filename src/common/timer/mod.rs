@@ -7,7 +7,7 @@ pub use fix_timer::*;
 pub mod delay;
 pub use delay::*;
 
-use crate::time::Hertz;
+use fugit::HertzU32 as Hertz;
 
 pub trait PwmChannel: embedded_hal::pwm::SetDutyCycle {
     fn config(&mut self, mode: PwmMode, polarity: PwmPolarity);

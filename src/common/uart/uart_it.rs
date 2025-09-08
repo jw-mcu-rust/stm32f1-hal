@@ -1,7 +1,7 @@
 //! UART interrupt implementation
 
 use super::*;
-use crate::os;
+use crate::common::os;
 use crate::ringbuf::*;
 use embedded_io::{ErrorType, Read, Write};
 
@@ -49,7 +49,7 @@ impl<U: UartPeriph> Write for UartInterruptTx<U> {
         }
 
         for _ in 0..=self.transmit_retry_times {
-            if let Some(n) = self.w.push_slice(buf) {
+            if let n @ 1.. = self.w.push_slice(buf) {
                 self.uart.set_interrupt(UartEvent::TxEmpty, true);
                 return Ok(n);
             } else if !self.uart.is_interrupt_enable(UartEvent::TxEmpty) {
@@ -161,7 +161,7 @@ where
         }
 
         for _ in 0..=self.retry_times {
-            if let Some(n) = self.r.pop_slice(buf) {
+            if let n @ 1.. = self.r.pop_slice(buf) {
                 return Ok(n);
             } else if !self.uart.is_interrupt_enable(UartEvent::RxNotEmpty) {
                 self.uart.set_interrupt(UartEvent::RxNotEmpty, true);

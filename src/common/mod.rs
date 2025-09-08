@@ -1,4 +1,5 @@
 pub mod dma;
+pub mod os;
 pub mod ringbuf;
 pub mod simplest_heap;
 pub mod timer;

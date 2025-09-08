@@ -1,27 +1,34 @@
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 
-extern crate alloc;
+cfg_if::cfg_if! {
+    if #[cfg(feature = "mcu")] {
+        extern crate alloc;
 
-pub mod afio;
-pub mod backup_domain;
-pub mod bb;
+        pub mod afio;
+        pub mod backup_domain;
+        pub mod bb;
+        pub mod dma;
+        pub mod flash;
+        pub mod gpio;
+        pub mod interrupt;
+        pub mod nvic_scb;
+        pub mod prelude;
+        pub mod rcc;
+        pub mod time;
+        pub mod timer;
+        pub mod uart;
+        pub mod mcu;
+        pub use mcu::Mcu;
+        pub use cortex_m;
+        pub use cortex_m_rt;
+    }
+}
+
 pub mod common;
-pub mod dma;
-pub mod flash;
-pub mod gpio;
-pub mod interrupt;
-pub mod nvic_scb;
-pub mod os;
-pub mod prelude;
-pub mod rcc;
-pub mod time;
-pub mod timer;
-pub mod uart;
 
 pub use common::ringbuf;
 pub use common::simplest_heap::Heap;
-pub use cortex_m;
-pub use cortex_m_rt;
+
 pub use embedded_hal;
 pub use embedded_io;
 pub use nb;
@@ -49,21 +56,4 @@ pub trait Steal {
     /// peripheral instance existing to ensure memory safety; ensure
     /// no stolen instances are passed to such software.
     unsafe fn steal(&self) -> Self;
-}
-
-impl<RB, const A: usize> Steal for stm32f1::Periph<RB, A> {
-    unsafe fn steal(&self) -> Self {
-        unsafe { Self::steal() }
-    }
-}
-
-pub struct Mcu {
-    // pub apb1: APB1,
-    // pub apb2: APB2,
-    // pub flash: pac::flash::Parts,
-    pub exti: pac::EXTI,
-    pub scb: nvic_scb::Scb,
-    pub nvic: nvic_scb::Nvic,
-    pub rcc: rcc::Rcc,
-    pub afio: afio::Afio,
 }

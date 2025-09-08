@@ -1,10 +1,10 @@
-use crate::{Mcu, pac::interrupt};
+use crate::{Mcu, pac::Interrupt};
 use alloc::boxed::Box;
 use core::cell::{Cell, OnceCell};
 
 pub struct Callback {
     callback: OnceCell<Cell<Box<dyn FnMut()>>>,
-    it_line: interrupt,
+    it_line: Interrupt,
 }
 
 unsafe impl Sync for Callback {}
@@ -13,7 +13,7 @@ unsafe impl Sync for Callback {}
 ///
 /// Sharing it across multiple interrupt callbacks may lead to a data race.
 impl Callback {
-    pub const fn new(it_line: interrupt) -> Self {
+    pub const fn new(it_line: Interrupt) -> Self {
         Self {
             callback: OnceCell::new(),
             it_line,
@@ -43,7 +43,7 @@ macro_rules! interrupt_handler {
         ($LINE:ident, $CALLBACK:ident),
     )+) => {$(
         pub static $CALLBACK: $crate::interrupt::Callback =
-            $crate::interrupt::Callback::new($crate::pac::interrupt::$LINE);
+            $crate::interrupt::Callback::new($crate::pac::Interrupt::$LINE);
 
         #[allow(non_snake_case)]
         #[interrupt]

@@ -1,5 +1,5 @@
-mod uart_dma_ringbuf_rx;
-pub use uart_dma_ringbuf_rx::*;
+mod uart_dma;
+pub use uart_dma::*;
 mod uart_it;
 pub use uart_it::*;
 mod uart_poll;
@@ -23,7 +23,7 @@ pub struct UartIdleInterrupt<U: UartPeriph> {
 }
 
 impl<U: UartPeriph> UartIdleInterrupt<U> {
-    pub(crate) fn new(uart: U) -> Self {
+    pub fn new(uart: U) -> Self {
         Self { uart }
     }
 
@@ -46,15 +46,10 @@ impl<U: UartPeriph> UartIdleInterrupt<U> {
 // Peripheral Trait -----------------------------------------------------------
 
 pub trait UartPeriph {
-    fn set_dma_tx(&mut self, enable: bool);
-    fn set_dma_rx(&mut self, enable: bool);
-
-    fn get_tx_data_reg_addr(&self) -> u32;
     fn write(&mut self, word: u16) -> nb::Result<(), Error>;
     fn is_tx_empty(&self) -> bool;
     fn is_tx_complete(&self) -> bool;
 
-    fn get_rx_data_reg_addr(&self) -> u32;
     fn read(&mut self) -> nb::Result<u16, Error>;
     fn is_rx_not_empty(&self) -> bool;
 
@@ -63,6 +58,11 @@ pub trait UartPeriph {
     fn is_interrupted(&mut self, event: UartEvent) -> bool;
 
     fn clear_err_flag(&self);
+
+    fn get_tx_data_reg_addr(&self) -> usize;
+    fn get_rx_data_reg_addr(&self) -> usize;
+    fn enable_dma_tx(&mut self, enable: bool);
+    fn enable_dma_rx(&mut self, enable: bool);
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

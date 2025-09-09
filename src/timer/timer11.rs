@@ -58,7 +58,8 @@ impl GeneralTimer for TimerX {
         // Note: Make it impossible to set the ARR value to 0, since this
         // would cause an infinite loop.
         if arr > 0 && arr <= Self::max_auto_reload() {
-            Ok(unsafe { self.set_auto_reload_unchecked(arr) })
+            unsafe { self.set_auto_reload_unchecked(arr) }
+            Ok(())
         } else {
             Err(Error::WrongAutoReload)
         }
@@ -81,7 +82,7 @@ impl GeneralTimer for TimerX {
 
     #[inline(always)]
     fn read_count(&self) -> u32 {
-        self.cnt().read().bits() as u32
+        self.cnt().read().bits()
     }
 
     #[inline(always)]
@@ -165,22 +166,16 @@ impl TimerWithPwm for TimerX {
     #[inline(always)]
     fn preload_output_channel_in_mode(&mut self, channel: Channel, mode: PwmMode) {
         let mode = Ocm::from(mode);
-        match channel {
-            Channel::C1 => {
-                self.ccmr1_output()
-                    .modify(|_, w| w.oc1pe().set_bit().oc1m().set(mode as _));
-            }
-            _ => (),
+        if channel == Channel::C1 {
+            self.ccmr1_output()
+                .modify(|_, w| w.oc1pe().set_bit().oc1m().set(mode as _));
         }
     }
 
     fn set_polarity(&mut self, channel: Channel, polarity: PwmPolarity) {
-        match channel {
-            Channel::C1 => {
-                self.ccer()
-                    .modify(|_, w| w.cc1p().bit(polarity == PwmPolarity::ActiveLow));
-            }
-            _ => (),
+        if channel == Channel::C1 {
+            self.ccer()
+                .modify(|_, w| w.cc1p().bit(polarity == PwmPolarity::ActiveLow));
         }
     }
 }

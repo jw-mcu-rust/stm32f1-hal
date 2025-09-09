@@ -84,7 +84,7 @@ impl UartPeriph for UartX {
 
     fn write(&mut self, word: u16) -> nb::Result<(), Error> {
         if self.is_tx_empty() {
-            self.dr().write(|w| unsafe { w.dr().bits(word.into()) });
+            self.dr().write(|w| unsafe { w.dr().bits(word) });
             Ok(())
         } else {
             Err(nb::Error::WouldBlock)

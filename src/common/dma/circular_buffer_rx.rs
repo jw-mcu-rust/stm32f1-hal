@@ -26,15 +26,18 @@ where
     }
 }
 
-pub struct CircularBuffer<T: Sized> {
+pub struct CircularBuffer<T> {
     recv_buf: Vec<T>,
     read_idx: usize,
 }
 
-impl<T> CircularBuffer<T> {
+impl<T: Sized + Copy> CircularBuffer<T> {
     fn new(buf_size: usize) -> Self {
         let mut recv_buf = Vec::<T>::with_capacity(buf_size);
-        unsafe { recv_buf.set_len(buf_size) }
+        #[allow(clippy::uninit_vec)]
+        unsafe {
+            recv_buf.set_len(buf_size)
+        }
 
         Self {
             recv_buf,
@@ -63,18 +66,15 @@ impl<T> CircularBuffer<T> {
                 ret = Some(&self.recv_buf[self.read_idx..end]);
                 self.read_idx = end;
             }
+        } else if max > dma_recv_idx - self.read_idx {
+            ret = Some(&self.recv_buf[self.read_idx..dma_recv_idx]);
+            self.read_idx = dma_recv_idx;
         } else {
-            if max > dma_recv_idx - self.read_idx {
-                ret = Some(&self.recv_buf[self.read_idx..dma_recv_idx]);
-                self.read_idx = dma_recv_idx;
-            } else {
-                let end = self.read_idx + max;
-                ret = Some(&self.recv_buf[self.read_idx..end]);
-                self.read_idx = end;
-            };
+            let end = self.read_idx + max;
+            ret = Some(&self.recv_buf[self.read_idx..end]);
+            self.read_idx = end;
         }
-
-        return ret;
+        ret
     }
 
     fn as_slice(&self) -> &[T] {

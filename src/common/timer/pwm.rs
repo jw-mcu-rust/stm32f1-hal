@@ -23,12 +23,12 @@ impl<TIM: TimerWithPwm> PwmTimer<TIM> {
 
     #[inline]
     pub fn get_count_value(&self) -> u32 {
-        self.tim.read_count().into()
+        self.tim.read_count()
     }
 
     #[inline]
     pub fn get_max_duty(&self) -> u32 {
-        (self.tim.read_auto_reload() as u32).wrapping_add(1)
+        self.tim.read_auto_reload().wrapping_add(1)
     }
 
     #[inline]

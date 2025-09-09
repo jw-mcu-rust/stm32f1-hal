@@ -55,7 +55,7 @@ where
 {
     #[inline(always)]
     fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
-        if buf.len() == 0 {
+        if buf.is_empty() {
             return Err(Error::Other);
         }
 
@@ -126,7 +126,7 @@ where
     T: Timeout,
 {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
-        if buf.len() == 0 {
+        if buf.is_empty() {
             return Err(Error::Other);
         }
 

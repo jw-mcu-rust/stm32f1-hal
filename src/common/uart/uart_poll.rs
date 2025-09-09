@@ -51,7 +51,7 @@ impl<U: UartPeriph, T: Timeout> e_nb::serial::Write<u16> for UartPollTx<U, T> {
 
 impl<U: UartPeriph, T: Timeout> e_io::Write for UartPollTx<U, T> {
     fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
-        if buf.len() == 0 {
+        if buf.is_empty() {
             return Err(Error::Other);
         }
 
@@ -138,7 +138,7 @@ impl<U: UartPeriph, T: Timeout> e_nb::serial::Read<u16> for UartPollRx<U, T> {
 
 impl<U: UartPeriph, T: Timeout> e_io::Read for UartPollRx<U, T> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
-        if buf.len() == 0 {
+        if buf.is_empty() {
             return Err(Error::Other);
         }
 

@@ -6,6 +6,7 @@ use critical_section::Mutex;
 pub struct DmaRingbufTx {}
 
 impl DmaRingbufTx {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new<T, CH>(
         mut ch: CH,
         peripheral_addr: usize,

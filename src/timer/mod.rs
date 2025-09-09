@@ -178,11 +178,11 @@ impl<TIM: Instance + TimerDirection> Timer<TIM> {
 impl<'a, TIM: Instance + TimerWithPwm1Ch + Steal + 'a> Timer<TIM> {
     pub fn into_pwm1<REMAP: RemapMode<TIM>>(
         mut self,
-        _pin: impl TimCh1Pin<REMAP> + 'a,
+        _pin: impl TimCh1Pin<REMAP>,
         update_freq: Hertz,
         preload: bool,
         mcu: &mut Mcu,
-    ) -> (PwmTimer<TIM>, impl PwmChannel) {
+    ) -> (PwmTimer<TIM>, impl PwmChannel + 'a) {
         REMAP::remap(&mut mcu.afio);
         self.tim.enable_preload(preload);
         self.tim.config_freq(self.clk, update_freq);

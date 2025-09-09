@@ -24,6 +24,9 @@ pub trait GeneralTimer {
     fn reset_counter(&mut self);
     fn enable_preload(&mut self, b: bool);
     fn max_auto_reload() -> u32;
+    /// # Safety
+    ///
+    /// `arr` must be greater than 0
     unsafe fn set_auto_reload_unchecked(&mut self, arr: u32);
     fn set_auto_reload(&mut self, arr: u32) -> Result<(), Error>;
     fn read_auto_reload(&self) -> u32;

@@ -697,7 +697,7 @@ impl RawConfig {
         } else {
             36_000_000
         };
-        let ppre1_bits = match (hclk + pclk1 - 1) / pclk1 {
+        let ppre1_bits = match hclk.div_ceil(pclk1) {
             0 | 1 => PPre::Div1,
             2 => PPre::Div2,
             3..=5 => PPre::Div4,

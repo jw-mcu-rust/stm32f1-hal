@@ -69,12 +69,8 @@ impl TimeoutInstance for RetryTimesInstance {
 
 // Always ----------------------------------
 
+#[derive(Default)]
 pub struct AlwaysTimeout {}
-impl AlwaysTimeout {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
 impl Timeout for AlwaysTimeout {
     #[inline]
     fn start(&mut self) -> impl TimeoutInstance {

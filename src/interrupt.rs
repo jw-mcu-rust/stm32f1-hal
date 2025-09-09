@@ -30,6 +30,9 @@ impl Callback {
         mcu.nvic.enable(self.it_line, true);
     }
 
+    /// # Safety
+    ///
+    /// Only call this in interrupt
     pub unsafe fn call(&self) {
         if let Some(cb) = self.callback.get() {
             unsafe { (*cb.as_ptr())() }

@@ -88,7 +88,7 @@ impl<TIM: GeneralTimer> CounterHz<TIM> {
         // freq_divider is always bigger than 0, since (psc + 1) is always less than
         // timer_clock
         let freq_divider = (self.clk.raw() / (psc + 1)) as u64;
-        let cnt: u32 = self.tim.read_count().into();
+        let cnt: u32 = self.tim.read_count();
         let cnt = cnt as u64;
 
         // It is safe to make this cast, because the maximum timer period in this HAL is
@@ -132,7 +132,7 @@ impl<TIM: GeneralTimer, const FREQ: u32> Counter<TIM, FREQ> {
     }
 
     pub fn now(&self) -> TimerInstantU32<FREQ> {
-        TimerInstantU32::from_ticks(self.tim.read_count().into())
+        TimerInstantU32::from_ticks(self.tim.read_count())
     }
 
     pub fn start(&mut self, timeout: TimerDurationU32<FREQ>) -> Result<(), Error> {

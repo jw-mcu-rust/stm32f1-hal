@@ -58,7 +58,8 @@ impl GeneralTimer for TimerX {
         // Note: Make it impossible to set the ARR value to 0, since this
         // would cause an infinite loop.
         if arr > 0 && arr <= Self::max_auto_reload() {
-            Ok(unsafe { self.set_auto_reload_unchecked(arr) })
+            unsafe { self.set_auto_reload_unchecked(arr) }
+            Ok(())
         } else {
             Err(Error::WrongAutoReload)
         }
@@ -81,7 +82,7 @@ impl GeneralTimer for TimerX {
 
     #[inline(always)]
     fn read_count(&self) -> u32 {
-        self.cnt().read().bits() as u32
+        self.cnt().read().bits()
     }
 
     #[inline(always)]

@@ -167,7 +167,7 @@ fn uart_interrupt_init<U: UartPeriphExt + 'static>(
 ) -> UartPollTask<impl embedded_io::Write + 'static, impl embedded_io::Read + 'static> {
     let (rx, mut rx_it) = rx.into_interrupt(64, SysTickTimeout::new(100));
     let (tx, mut tx_it) =
-        tx.into_interrupt(64, SysTickTimeout::new(0), SysTickTimeout::new(20_000));
+        tx.into_interrupt(32, SysTickTimeout::new(0), SysTickTimeout::new(32 * 200));
     interrupt_callback.set(mcu, move || {
         rx_it.handler();
         tx_it.handler();
@@ -189,7 +189,7 @@ fn uart_dma_init<'r, U: UartPeriphExt + 'static>(
         dma_tx,
         32,
         SysTickTimeout::new(0),
-        SysTickTimeout::new(20_000),
+        SysTickTimeout::new(32 * 200),
     );
     interrupt_callback.set(mcu, move || {
         tx_it.interrupt_reload();

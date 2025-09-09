@@ -20,8 +20,8 @@ FUNC_TABLE = {
 }
 
 
-TEMPLATE = """
-impl DmaBind{func}<pac::{peri}> for {dma}::{ch} {{}}"""
+TEMPLATE = """impl DmaBind{func}<pac::{peri}> for {dma}::{ch} {{}}
+"""
 
 
 def write_item(dma: str, ch: str, func: str, w: Write) -> None:
@@ -32,6 +32,7 @@ def write_item(dma: str, ch: str, func: str, w: Write) -> None:
 
 
 def write_table(d: dict, filter: str, w: Write) -> None:
+    w.write("\n")
     for dma, ch_table in sorted(d.items()):
         for ch, func_list in sorted(ch_table.items()):
             for func in sorted(func_list):
@@ -78,6 +79,8 @@ def csv_to_code(csv_file: str, show: bool = False) -> None:
     )
 
     write_table(d, "UART", w)
+    write_table(d, "SPI", w)
+    write_table(d, "I2C", w)
 
     w.close()
     subprocess.run(["rustfmt", target_file])

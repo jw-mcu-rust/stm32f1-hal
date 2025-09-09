@@ -1,6 +1,6 @@
 //! # Direct Memory Access
 
-use crate::{Steal, common::wrap_trait::*, pac, rcc::Rcc};
+use crate::{common::wrap_trait::*, pac, rcc::Rcc, Steal};
 
 pub use crate::common::dma::*;
 pub type DmaPriority = pac::dma1::ch::cr::PL;
@@ -227,3 +227,15 @@ impl DmaBindRx<pac::USART2> for dma1::C6 {}
 impl DmaBindTx<pac::USART2> for dma1::C7 {}
 impl DmaBindRx<pac::UART4> for dma2::C3 {}
 impl DmaBindTx<pac::UART4> for dma2::C5 {}
+
+impl DmaBindRx<pac::SPI1> for dma1::C2 {}
+impl DmaBindTx<pac::SPI1> for dma1::C3 {}
+impl DmaBindRx<pac::SPI2> for dma1::C4 {}
+impl DmaBindTx<pac::SPI2> for dma1::C5 {}
+impl DmaBindRx<pac::SPI3> for dma2::C1 {}
+impl DmaBindTx<pac::SPI3> for dma2::C2 {}
+
+impl DmaBindTx<pac::I2C2> for dma1::C4 {}
+impl DmaBindRx<pac::I2C2> for dma1::C5 {}
+impl DmaBindTx<pac::I2C1> for dma1::C6 {}
+impl DmaBindRx<pac::I2C1> for dma1::C7 {}

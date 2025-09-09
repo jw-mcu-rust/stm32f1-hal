@@ -15,12 +15,13 @@ use stm32f1_hal::{
     embedded_io,
     gpio::{Edge, ExtiPin, PinState},
     nvic_scb::PriorityGrouping,
-    os::{RetryTimes, Timeout},
     pac::{self, Interrupt},
     prelude::*,
     rcc,
-    timer::{syst::SysTickTimeout, *},
+    time::MonoTimer,
+    timer::*,
     uart::{self, UartPeriphExt},
+    waiter_trait::{self, Counter, NonInterval, Waiter},
 };
 
 mod led_task;
@@ -58,6 +59,10 @@ fn main() -> ! {
         exti: dp.EXTI,
     };
 
+    let mut sys_timer = cp.SYST.counter_hz(&mcu);
+    sys_timer.start(20.Hz()).unwrap();
+    let mono_timer = MonoTimer::new(cp.DWT, cp.DCB, &mcu.rcc.clocks);
+
     // Keep them in one place for easier management
     mcu.nvic.enable(Interrupt::USART1, false); // Optional
     mcu.nvic.set_priority(Interrupt::USART1, 2);
@@ -88,7 +93,8 @@ fn main() -> ! {
     };
 
     // let mut uart_task = uart_poll_init(uart_tx, uart_rx);
-    // let mut uart_task = uart_interrupt_init(uart_tx, uart_rx, &all_it::USART1_CB, &mut mcu);
+    // let mut uart_task =
+    //     uart_interrupt_init(uart_tx, uart_rx, &all_it::USART1_CB, &mut mcu, &sys_timer);
     dma1.4.set_priority(DmaPriority::Medium);
     dma1.5.set_priority(DmaPriority::Medium);
     let mut uart_task = uart_dma_init(
@@ -98,6 +104,7 @@ fn main() -> ! {
         uart_rx,
         dma1.5,
         &mut mcu,
+        &sys_timer,
     );
 
     // LED --------------------------------------
@@ -105,9 +112,9 @@ fn main() -> ! {
     let mut led = gpiob
         .pb0
         .into_open_drain_output_with_state(&mut gpiob.crl, PinState::High);
-    cp.SYST.counter_hz(&mcu).start(1000.Hz()).unwrap();
-    let mut timeout = SysTickTimeout::new(1000_000);
-    let mut led_task = LedTask::new(led, timeout.start());
+    let mut water = sys_timer.waiter_us(1.secs(), NonInterval::new());
+    // let water = mono_timer.waiter(1.secs());
+    let mut led_task = LedTask::new(led, water.start());
 
     // PWM --------------------------------------
 
@@ -154,8 +161,8 @@ fn uart_poll_init<U: UartPeriphExt>(
     tx: uart::Tx<U>,
     rx: uart::Rx<U>,
 ) -> UartPollTask<impl embedded_io::Write, impl embedded_io::Read> {
-    let uart_rx = rx.into_poll(RetryTimes::new(0), RetryTimes::new(1_000));
-    let uart_tx = tx.into_poll(RetryTimes::new(0), RetryTimes::new(10_000));
+    let uart_rx = rx.into_poll(Counter::new(0), Counter::new(1_000));
+    let uart_tx = tx.into_poll(Counter::new(0), Counter::new(10_000));
     UartPollTask::new(32, uart_tx, uart_rx)
 }
 
@@ -164,10 +171,14 @@ fn uart_interrupt_init<U: UartPeriphExt + 'static>(
     rx: uart::Rx<U>,
     interrupt_callback: &hal::interrupt::Callback,
     mcu: &mut Mcu,
+    timer: &SystemTimer,
 ) -> UartPollTask<impl embedded_io::Write + 'static, impl embedded_io::Read + 'static> {
-    let (rx, mut rx_it) = rx.into_interrupt(64, SysTickTimeout::new(100));
-    let (tx, mut tx_it) =
-        tx.into_interrupt(32, SysTickTimeout::new(0), SysTickTimeout::new(32 * 200));
+    let (rx, mut rx_it) = rx.into_interrupt(64, timer.waiter_us(100.micros(), NonInterval::new()));
+    let (tx, mut tx_it) = tx.into_interrupt(
+        32,
+        timer.waiter_us(0.micros(), NonInterval::new()),
+        timer.waiter_us(32 * 200.micros(), NonInterval::new()),
+    );
     interrupt_callback.set(mcu, move || {
         rx_it.handler();
         tx_it.handler();
@@ -182,14 +193,19 @@ fn uart_dma_init<'r, U: UartPeriphExt + 'static>(
     rx: uart::Rx<U>,
     dma_rx: impl DmaBindRx<U> + 'r,
     mcu: &mut Mcu,
+    timer: &SystemTimer,
 ) -> UartPollTask<impl embedded_io::Write + 'static, impl embedded_io::Read + 'r> {
-    let uart_rx = rx.into_dma_circle(dma_rx, 64, SysTickTimeout::new(100));
+    let uart_rx = rx.into_dma_circle(
+        dma_rx,
+        64,
+        timer.waiter_us(100.micros(), NonInterval::new()),
+    );
     dma_tx.set_interrupt(DmaEvent::TransferComplete, true);
     let (uart_tx, mut tx_it) = tx.into_dma_ringbuf(
         dma_tx,
         32,
-        SysTickTimeout::new(0),
-        SysTickTimeout::new(32 * 200),
+        timer.waiter_us(0.micros(), NonInterval::new()),
+        timer.waiter_us(32 * 200.micros(), NonInterval::new()),
     );
     interrupt_callback.set(mcu, move || {
         tx_it.interrupt_reload();

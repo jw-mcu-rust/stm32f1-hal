@@ -7,14 +7,14 @@ use embedded_io as e_io;
 
 // TX -------------------------------------------------------------------------
 
-pub struct UartPollTx<U, T> {
+pub struct UartPollTx<U, W> {
     uart: U,
-    timeout: T,
-    flush_timeout: T,
+    timeout: W,
+    flush_timeout: W,
 }
 
-impl<U: UartPeriph, T: Timeout> UartPollTx<U, T> {
-    pub fn new(uart: U, timeout: T, flush_timeout: T) -> Self {
+impl<U: UartPeriph, W: Waiter> UartPollTx<U, W> {
+    pub fn new(uart: U, timeout: W, flush_timeout: W) -> Self {
         Self {
             uart,
             timeout,
@@ -23,16 +23,16 @@ impl<U: UartPeriph, T: Timeout> UartPollTx<U, T> {
     }
 }
 
-impl<U: UartPeriph, T: Timeout> e_nb::serial::ErrorType for UartPollTx<U, T> {
+impl<U: UartPeriph, W: Waiter> e_nb::serial::ErrorType for UartPollTx<U, W> {
     type Error = Error;
 }
-impl<U: UartPeriph, T: Timeout> e_io::ErrorType for UartPollTx<U, T> {
+impl<U: UartPeriph, W: Waiter> e_io::ErrorType for UartPollTx<U, W> {
     type Error = Error;
 }
 
 // NB Write ----
 
-impl<U: UartPeriph, T: Timeout> e_nb::serial::Write<u16> for UartPollTx<U, T> {
+impl<U: UartPeriph, W: Waiter> e_nb::serial::Write<u16> for UartPollTx<U, W> {
     #[inline]
     fn write(&mut self, word: u16) -> nb::Result<(), Self::Error> {
         self.uart.write(word)
@@ -49,7 +49,7 @@ impl<U: UartPeriph, T: Timeout> e_nb::serial::Write<u16> for UartPollTx<U, T> {
 
 // IO Write ----
 
-impl<U: UartPeriph, T: Timeout> e_io::Write for UartPollTx<U, T> {
+impl<U: UartPeriph, W: Waiter> e_io::Write for UartPollTx<U, W> {
     fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
         if buf.is_empty() {
             return Err(Error::Other);
@@ -63,7 +63,6 @@ impl<U: UartPeriph, T: Timeout> e_io::Write for UartPollTx<U, T> {
                 if t.timeout() {
                     break rst;
                 }
-                t.interval();
             } else {
                 break rst;
             }
@@ -94,7 +93,6 @@ impl<U: UartPeriph, T: Timeout> e_io::Write for UartPollTx<U, T> {
             if t.timeout() {
                 break;
             }
-            t.interval();
         }
         Err(Error::Other)
     }
@@ -102,14 +100,14 @@ impl<U: UartPeriph, T: Timeout> e_io::Write for UartPollTx<U, T> {
 
 // RX -------------------------------------------------------------------------
 
-pub struct UartPollRx<U, T> {
+pub struct UartPollRx<U, W> {
     uart: U,
-    timeout: T,
-    continue_timeout: T,
+    timeout: W,
+    continue_timeout: W,
 }
 
-impl<U: UartPeriph, T: Timeout> UartPollRx<U, T> {
-    pub fn new(uart: U, timeout: T, continue_timeout: T) -> Self {
+impl<U: UartPeriph, W: Waiter> UartPollRx<U, W> {
+    pub fn new(uart: U, timeout: W, continue_timeout: W) -> Self {
         Self {
             uart,
             timeout,
@@ -118,16 +116,16 @@ impl<U: UartPeriph, T: Timeout> UartPollRx<U, T> {
     }
 }
 
-impl<U: UartPeriph, T: Timeout> e_nb::serial::ErrorType for UartPollRx<U, T> {
+impl<U: UartPeriph, W: Waiter> e_nb::serial::ErrorType for UartPollRx<U, W> {
     type Error = Error;
 }
-impl<U: UartPeriph, T: Timeout> e_io::ErrorType for UartPollRx<U, T> {
+impl<U: UartPeriph, W: Waiter> e_io::ErrorType for UartPollRx<U, W> {
     type Error = Error;
 }
 
 // NB Read ----
 
-impl<U: UartPeriph, T: Timeout> e_nb::serial::Read<u16> for UartPollRx<U, T> {
+impl<U: UartPeriph, W: Waiter> e_nb::serial::Read<u16> for UartPollRx<U, W> {
     #[inline]
     fn read(&mut self) -> nb::Result<u16, Self::Error> {
         self.uart.read()
@@ -136,7 +134,7 @@ impl<U: UartPeriph, T: Timeout> e_nb::serial::Read<u16> for UartPollRx<U, T> {
 
 // IO Read ----
 
-impl<U: UartPeriph, T: Timeout> e_io::Read for UartPollRx<U, T> {
+impl<U: UartPeriph, W: Waiter> e_io::Read for UartPollRx<U, W> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
         if buf.is_empty() {
             return Err(Error::Other);
@@ -150,7 +148,6 @@ impl<U: UartPeriph, T: Timeout> e_io::Read for UartPollRx<U, T> {
                 if t.timeout() {
                     break rst;
                 }
-                t.interval();
             } else {
                 break rst;
             }
@@ -175,7 +172,6 @@ impl<U: UartPeriph, T: Timeout> e_io::Read for UartPollRx<U, T> {
                     if t.timeout() {
                         return Ok(n);
                     }
-                    t.interval();
                 }
             }
         }

@@ -23,10 +23,10 @@ jobs:
           python-version: "3.13"
       - run: python scripts/sync_code.py --check
       - run: cargo build --release --features=stm32f100,xC
-      - run: cargo build --release --features=stm32f103,xG,rtic
-      - run: cargo clippy --features=stm32f103,xG,rtic
-      - run: cargo test --target=x86_64-unknown-linux-gnu --features=std
-      - run: python scripts/build.py --example=f103c8
+      - run: python scripts/build.py build --release
+      - run: python scripts/build.py clippy
+      - run: python scripts/build.py test
+      - run: python scripts/build.py build --example=f103c8
 
   publish:
     needs: test

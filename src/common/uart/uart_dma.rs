@@ -4,25 +4,25 @@ use embedded_io::{ErrorType, Read, Write};
 
 // TX -------------------------------------------------------------------------
 
-pub struct UartDmaBufTx<U, CH, T> {
+pub struct UartDmaBufTx<U, CH, W> {
     _uart: U,
     w: DmaRingbufTxWriter<u8, CH>,
-    timeout: T,
-    flush_timeout: T,
+    timeout: W,
+    flush_timeout: W,
 }
 
-impl<U, CH, T> UartDmaBufTx<U, CH, T>
+impl<U, CH, W> UartDmaBufTx<U, CH, W>
 where
     U: UartPeriph,
     CH: DmaChannel,
-    T: Timeout,
+    W: Waiter,
 {
     pub fn new(
         mut uart: U,
         dma_ch: CH,
         buf_size: usize,
-        timeout: T,
-        flush_timeout: T,
+        timeout: W,
+        flush_timeout: W,
     ) -> (Self, DmaRingbufTxLoader<u8, CH>) {
         uart.enable_dma_tx(true);
         let (w, l) = DmaRingbufTx::new(dma_ch, uart.get_tx_data_reg_addr(), buf_size);
@@ -38,20 +38,20 @@ where
     }
 }
 
-impl<U, CH, T> ErrorType for UartDmaBufTx<U, CH, T>
+impl<U, CH, W> ErrorType for UartDmaBufTx<U, CH, W>
 where
     U: UartPeriph,
     CH: DmaChannel,
-    T: Timeout,
+    W: Waiter,
 {
     type Error = Error;
 }
 
-impl<U, CH, T> Write for UartDmaBufTx<U, CH, T>
+impl<U, CH, W> Write for UartDmaBufTx<U, CH, W>
 where
     U: UartPeriph,
     CH: DmaChannel,
-    T: Timeout,
+    W: Waiter,
 {
     #[inline(always)]
     fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
@@ -66,7 +66,6 @@ where
             } else if t.timeout() {
                 break;
             }
-            t.interval();
         }
         Err(Error::Busy)
     }
@@ -79,7 +78,6 @@ where
             } else if t.timeout() {
                 break;
             }
-            t.interval();
         }
         Err(Error::Other)
     }
@@ -87,19 +85,19 @@ where
 
 // RX -------------------------------------------------------------------------
 
-pub struct UartDmaRx<U, CH, T> {
+pub struct UartDmaRx<U, CH, W> {
     _uart: U,
     ch: DmaCircularBufferRx<u8, CH>,
-    timeout: T,
+    timeout: W,
 }
 
-impl<U, CH, T> UartDmaRx<U, CH, T>
+impl<U, CH, W> UartDmaRx<U, CH, W>
 where
     U: UartPeriph,
     CH: DmaChannel,
-    T: Timeout,
+    W: Waiter,
 {
-    pub fn new(mut uart: U, dma_ch: CH, buf_size: usize, timeout: T) -> Self {
+    pub fn new(mut uart: U, dma_ch: CH, buf_size: usize, timeout: W) -> Self {
         let ch = DmaCircularBufferRx::<u8, CH>::new(dma_ch, uart.get_rx_data_reg_addr(), buf_size);
         uart.enable_dma_rx(true);
         Self {
@@ -110,20 +108,20 @@ where
     }
 }
 
-impl<U, CH, T> ErrorType for UartDmaRx<U, CH, T>
+impl<U, CH, W> ErrorType for UartDmaRx<U, CH, W>
 where
     U: UartPeriph,
     CH: DmaChannel,
-    T: Timeout,
+    W: Waiter,
 {
     type Error = Error;
 }
 
-impl<U, CH, T> Read for UartDmaRx<U, CH, T>
+impl<U, CH, W> Read for UartDmaRx<U, CH, W>
 where
     U: UartPeriph,
     CH: DmaChannel,
-    T: Timeout,
+    W: Waiter,
 {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
         if buf.is_empty() {
@@ -138,7 +136,6 @@ where
             } else if t.timeout() {
                 break;
             }
-            t.interval();
         }
         Err(Error::Other)
     }

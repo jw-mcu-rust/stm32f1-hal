@@ -29,6 +29,7 @@ pub mod common;
 pub use common::os;
 pub use common::ringbuf;
 pub use common::simplest_heap::Heap;
+pub use waiter_trait;
 
 pub use embedded_hal;
 pub use embedded_io;

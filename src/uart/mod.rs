@@ -67,16 +67,16 @@ impl<U: UartPeriphExt> Tx<U> {
         Self { uart }
     }
 
-    pub fn into_poll<T: Timeout>(self, timeout: T, flush_timeout: T) -> UartPollTx<U, T> {
+    pub fn into_poll<W: Waiter>(self, timeout: W, flush_timeout: W) -> UartPollTx<U, W> {
         UartPollTx::new(self.uart, timeout, flush_timeout)
     }
 
-    pub fn into_interrupt<T: Timeout>(
+    pub fn into_interrupt<W: Waiter>(
         self,
         buf_size: usize,
-        timeout: T,
-        flush_timeout: T,
-    ) -> (UartInterruptTx<U, T>, UartInterruptTxHandler<U>) {
+        timeout: W,
+        flush_timeout: W,
+    ) -> (UartInterruptTx<U, W>, UartInterruptTxHandler<U>) {
         let u2 = unsafe { self.uart.steal() };
         UartInterruptTx::new([self.uart, u2], buf_size, timeout, flush_timeout)
     }
@@ -88,16 +88,16 @@ impl<U: UartPeriphExt> Tx<U> {
     //     UartDmaTx::<U, CH>::new(self.uart, dma_ch)
     // }
 
-    pub fn into_dma_ringbuf<CH, T>(
+    pub fn into_dma_ringbuf<CH, W>(
         self,
         dma_ch: CH,
         buf_size: usize,
-        timeout: T,
-        flush_timeout: T,
-    ) -> (UartDmaBufTx<U, CH, T>, DmaRingbufTxLoader<u8, CH>)
+        timeout: W,
+        flush_timeout: W,
+    ) -> (UartDmaBufTx<U, CH, W>, DmaRingbufTxLoader<u8, CH>)
     where
         CH: DmaBindTx<U>,
-        T: Timeout,
+        W: Waiter,
     {
         UartDmaBufTx::new(self.uart, dma_ch, buf_size, timeout, flush_timeout)
     }
@@ -115,28 +115,28 @@ impl<U: UartPeriphExt> Rx<U> {
         Self { uart }
     }
 
-    pub fn into_poll<T: Timeout>(self, timeout: T, continue_timeout: T) -> UartPollRx<U, T> {
+    pub fn into_poll<W: Waiter>(self, timeout: W, continue_timeout: W) -> UartPollRx<U, W> {
         UartPollRx::new(self.uart, timeout, continue_timeout)
     }
 
-    pub fn into_interrupt<T: Timeout>(
+    pub fn into_interrupt<W: Waiter>(
         self,
         buf_size: usize,
-        timeout: T,
-    ) -> (UartInterruptRx<U, T>, UartInterruptRxHandler<U>) {
+        timeout: W,
+    ) -> (UartInterruptRx<U, W>, UartInterruptRxHandler<U>) {
         let u2 = unsafe { self.uart.steal() };
         UartInterruptRx::new([self.uart, u2], buf_size, timeout)
     }
 
-    pub fn into_dma_circle<CH, T>(
+    pub fn into_dma_circle<CH, W>(
         self,
         dma_ch: CH,
         buf_size: usize,
-        timeout: T,
-    ) -> UartDmaRx<U, CH, T>
+        timeout: W,
+    ) -> UartDmaRx<U, CH, W>
     where
         CH: DmaBindRx<U>,
-        T: Timeout,
+        W: Waiter,
     {
         UartDmaRx::new(self.uart, dma_ch, buf_size, timeout)
     }

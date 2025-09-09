@@ -1,5 +1,7 @@
-use crate::embedded_io::{Read, Write};
-use crate::hal::ringbuf::*;
+use crate::{
+    embedded_io::{Read, Write},
+    hal::ringbuf::*,
+};
 
 pub struct UartPollTask<W: Write, R: Read> {
     tx: W,

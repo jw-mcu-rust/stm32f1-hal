@@ -1,5 +1,6 @@
 import argparse
 import os
+import platform
 import subprocess
 
 from base import green
@@ -13,6 +14,7 @@ def run_cmd(cmd: list[str]) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
+    parser.add_argument("cmd", choices=["check", "test", "build", "clippy"])
     parser.add_argument("--release", action="store_true")
     parser.add_argument("--features", type=str, nargs="*")
     parser.add_argument("-e", "--examples", type=str, nargs="*")
@@ -20,19 +22,24 @@ def main() -> int:
 
     sync_all()
 
-    cmd = ["cargo"]
+    cmd = ["cargo", opts.cmd]
 
     if opts.examples:
         for e in opts.examples:
             os.chdir("examples/" + e)
-            cmd.extend(["build", "--release"])
+            cmd.append("--release")
             run_cmd(cmd)
             os.chdir("../../")
+    elif opts.cmd == "test":
+        cmd.append("--features=std")
+        if platform.system().lower() == "windows":
+            cmd.append("--target=x86_64-pc-windows-msvc")
+        else:
+            cmd.append("--target=x86_64-unknown-linux-gnu")
+        run_cmd(cmd)
     else:
         if opts.release:
-            cmd.extend(["build", "--release"])
-        else:
-            cmd.append("check")
+            cmd.append("--release")
 
         if opts.features is None:
             cmd.append(f"--features=stm32f103,xG,rtic")

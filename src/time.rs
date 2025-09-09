@@ -33,14 +33,15 @@ use core::ops;
 use cortex_m::peripheral::{DCB, DWT};
 
 use crate::rcc::Clocks;
+use waiter_trait::{Interval, TickInstant, TickWaiter};
 
 /// Bits per second
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Debug)]
 pub struct Bps(pub u32);
 
 pub use fugit::{
-    HertzU32 as Hertz, KilohertzU32 as KiloHertz, MegahertzU32 as MegaHertz,
-    MicrosDurationU32 as MicroSeconds, MillisDurationU32 as MilliSeconds,
+    Duration, HertzU32 as Hertz, KilohertzU32 as KiloHertz, MegahertzU32 as MegaHertz,
+    MicrosDurationU32 as MicroSeconds, MillisDurationU32 as MilliSeconds, NanosDurationU64,
 };
 
 /// Extension trait that adds convenience methods to the `u32` type
@@ -151,6 +152,23 @@ impl MonoTimer {
             now: DWT::cycle_count(),
         }
     }
+
+    pub fn waiter_us<I: Interval>(
+        &self,
+        timeout: MicroSeconds,
+        interval: I,
+    ) -> TickWaiter<DwtInstant, I, u32> {
+        TickWaiter::us(timeout.ticks(), interval, self.frequency.raw())
+    }
+
+    /// It can wait longer with a nanosecond timeout.
+    pub fn waiter_ns<I: Interval>(
+        &self,
+        timeout: NanosDurationU64,
+        interval: I,
+    ) -> TickWaiter<DwtInstant, I, u64> {
+        TickWaiter::ns(timeout.ticks(), interval, self.frequency.raw())
+    }
 }
 
 /// A measurement of a monotonically non-decreasing clock
@@ -163,5 +181,30 @@ impl Instant {
     /// Ticks elapsed since the `Instant` was created
     pub fn elapsed(self) -> u32 {
         DWT::cycle_count().wrapping_sub(self.now)
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+/// A `TickInstant` implementation
+#[derive(Copy, Clone)]
+pub struct DwtInstant {
+    tick: u32,
+}
+impl TickInstant for DwtInstant {
+    #[inline(always)]
+    fn now() -> Self {
+        Self {
+            tick: DWT::cycle_count(),
+        }
+    }
+
+    #[inline(always)]
+    fn tick_since(self, earlier: Self) -> u32 {
+        if self.tick >= earlier.tick {
+            self.tick - earlier.tick
+        } else {
+            self.tick + (u32::MAX - earlier.tick)
+        }
     }
 }

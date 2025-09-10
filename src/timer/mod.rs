@@ -106,26 +106,6 @@ impl<TIM: Instance + Steal> Timer<TIM> {
         }
     }
 
-    /// Blocking [Delay] with custom fixed precision
-    pub fn delay<const FREQ: u32>(self) -> Delay<TIM, FREQ> {
-        FTimer::new(self.tim, self.clk).delay()
-    }
-
-    /// Blocking [Delay] with fixed precision of 1 ms (1 kHz sampling)
-    ///
-    /// Can wait from 2 ms to 49 days.
-    ///
-    /// NOTE: don't use this if your system frequency more than 65 MHz
-    pub fn delay_ms(self) -> DelayMs<TIM> {
-        self.delay::<1_000>()
-    }
-    /// Blocking [Delay] with fixed precision of 1 μs (1 MHz sampling)
-    ///
-    /// Can wait from 2 μs to 71 min.
-    pub fn delay_us(self) -> DelayUs<TIM> {
-        self.delay::<1_000_000>()
-    }
-
     pub fn release(self) -> TIM {
         self.tim
     }

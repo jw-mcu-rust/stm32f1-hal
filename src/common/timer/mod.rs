@@ -4,8 +4,6 @@ pub mod counter;
 pub use counter::*;
 pub mod fix_timer;
 pub use fix_timer::*;
-pub mod delay;
-pub use delay::*;
 
 use fugit::HertzU32 as Hertz;
 

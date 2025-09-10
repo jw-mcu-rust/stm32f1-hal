@@ -36,11 +36,6 @@ impl<TIM: GeneralTimer, const FREQ: u32> FTimer<TIM, FREQ> {
         Counter(self)
     }
 
-    /// Creates `Delay` that imlements [embedded_hal_02::blocking::delay] traits
-    pub fn delay(self) -> Delay<TIM, FREQ> {
-        Delay(self)
-    }
-
     /// Releases the TIM peripheral
     pub fn release(self) -> TIM {
         self.tim

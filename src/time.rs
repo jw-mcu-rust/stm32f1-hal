@@ -204,7 +204,7 @@ impl TickInstant for DwtInstant {
         if self.tick >= earlier.tick {
             self.tick - earlier.tick
         } else {
-            self.tick + (u32::MAX - earlier.tick)
+            self.tick + (u32::MAX - earlier.tick + 1)
         }
     }
 }

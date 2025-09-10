@@ -252,7 +252,7 @@ impl TickInstant for SysTickInstant {
         if self.tick <= earlier.tick {
             earlier.tick - self.tick
         } else {
-            earlier.tick + (SYST::get_reload() - self.tick)
+            earlier.tick + (SYST::get_reload() - self.tick + 1)
         }
     }
 }

@@ -33,7 +33,7 @@ use core::ops;
 use cortex_m::peripheral::{DCB, DWT};
 
 use crate::rcc::Clocks;
-use waiter_trait::{Interval, TickInstant, TickWaiter};
+use waiter_trait::{NonInterval, TickInstant, TickWaiter};
 
 /// Bits per second
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Debug)]
@@ -41,7 +41,7 @@ pub struct Bps(pub u32);
 
 pub use fugit::{
     Duration, HertzU32 as Hertz, KilohertzU32 as KiloHertz, MegahertzU32 as MegaHertz,
-    MicrosDurationU32 as MicroSeconds, MillisDurationU32 as MilliSeconds, NanosDurationU64,
+    MicrosDurationU32 as MicroSeconds, MillisDurationU32 as MilliSeconds,
 };
 
 /// Extension trait that adds convenience methods to the `u32` type
@@ -153,21 +153,8 @@ impl MonoTimer {
         }
     }
 
-    pub fn waiter_us<I: Interval>(
-        &self,
-        timeout: MicroSeconds,
-        interval: I,
-    ) -> TickWaiter<DwtInstant, I, u32> {
-        TickWaiter::us(timeout.ticks(), interval, self.frequency.raw())
-    }
-
-    /// It can wait longer with a nanosecond timeout.
-    pub fn waiter_ns<I: Interval>(
-        &self,
-        timeout: NanosDurationU64,
-        interval: I,
-    ) -> TickWaiter<DwtInstant, I, u64> {
-        TickWaiter::ns(timeout.ticks(), interval, self.frequency.raw())
+    pub fn waiter(&self, timeout: MicroSeconds) -> TickWaiter<DwtInstant, NonInterval, u32> {
+        TickWaiter::us(timeout, NonInterval::new(), self.frequency.raw())
     }
 }
 

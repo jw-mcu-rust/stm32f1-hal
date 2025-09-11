@@ -8,4 +8,4 @@ cfg_if::cfg_if! {
     }
 }
 
-pub use waiter_trait::{Waiter, WaiterTime};
+pub use waiter_trait::{Waiter, WaiterStatus};

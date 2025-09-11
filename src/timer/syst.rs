@@ -4,10 +4,8 @@ use super::*;
 use crate::Mcu;
 use core::ops::{Deref, DerefMut};
 use cortex_m::peripheral::{SYST, syst::SystClkSource};
-use fugit::{
-    HertzU32 as Hertz, MicrosDurationU32, NanosDurationU64, TimerDurationU32, TimerInstantU32,
-};
-use waiter_trait::{Interval, TickInstant, TickWaiter};
+use fugit::{HertzU32 as Hertz, MicrosDurationU32, TimerDurationU32, TimerInstantU32};
+use waiter_trait::{NonInterval, TickInstant, TickWaiter};
 
 pub trait SysTimerInit: Sized {
     /// Creates timer which takes [Hertz] as Duration
@@ -77,21 +75,11 @@ impl SystemTimer {
         self.syst.clear_current();
     }
 
-    pub fn waiter_us<I: Interval>(
+    pub fn waiter(
         &self,
         timeout: MicrosDurationU32,
-        interval: I,
-    ) -> TickWaiter<SysTickInstant, I, u32> {
-        TickWaiter::us(timeout.ticks(), interval, self.clk.raw())
-    }
-
-    /// It can wait longer with a nanosecond timeout.
-    pub fn waiter_ns<I: Interval>(
-        &self,
-        timeout: NanosDurationU64,
-        interval: I,
-    ) -> TickWaiter<SysTickInstant, I, u64> {
-        TickWaiter::ns(timeout.ticks(), interval, self.clk.raw())
+    ) -> TickWaiter<SysTickInstant, NonInterval, u32> {
+        TickWaiter::us(timeout, NonInterval::new(), self.clk.raw())
     }
 }
 

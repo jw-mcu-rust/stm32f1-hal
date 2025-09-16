@@ -51,26 +51,25 @@ impl Heap {
             once_flag.set(true);
 
             self.heap
-                .borrow(cs)
-                .borrow_mut()
+                .borrow_ref_mut(cs)
                 .init(start_addr as *mut u8, size);
         });
     }
 
     /// Returns an estimate of the amount of bytes in use.
     pub fn used(&self) -> usize {
-        critical_section::with(|cs| self.heap.borrow(cs).borrow().used())
+        critical_section::with(|cs| self.heap.borrow_ref(cs).used())
     }
 
     /// Returns an estimate of the amount of bytes available.
     pub fn free(&self) -> usize {
-        critical_section::with(|cs| self.heap.borrow(cs).borrow().free())
+        critical_section::with(|cs| self.heap.borrow_ref(cs).free())
     }
 }
 
 unsafe impl GlobalAlloc for Heap {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        critical_section::with(|cs| self.heap.borrow(cs).borrow_mut().alloc(layout))
+        critical_section::with(|cs| self.heap.borrow_ref_mut(cs).alloc(layout))
     }
 
     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {}
